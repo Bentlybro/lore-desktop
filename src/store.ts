@@ -121,6 +121,7 @@ interface AppStore {
   addRepo: (path: string) => Promise<void>;
   removeRepo: (path: string) => Promise<void>;
   renameRepo: (path: string, name: string) => Promise<void>;
+  deleteRepo: (repo: RepoEntry) => Promise<void>;
   clone: (repo: string, dest: string) => Promise<void>;
   createRepo: (repo: string, dir: string) => Promise<void>;
   setError: (e: string | null) => void;
@@ -195,6 +196,8 @@ export const useStore = create<AppStore>((set, get) => {
         // Live change detection (GitHub-Desktop style).
         lore.startWatch(r.path).catch(() => {});
         await get().refresh();
+      } else {
+        lore.stopWatch().catch(() => {});
       }
     },
 
@@ -493,6 +496,30 @@ export const useStore = create<AppStore>((set, get) => {
       await get().persistRepos(repos);
       const cur = get().current;
       if (cur?.path === path) set({ current: { ...cur, name } });
+    },
+
+    async deleteRepo(repo) {
+      set({ busy: true, error: null });
+      let serverMsg: string | null = null;
+      try {
+        // Best-effort server delete (auth-gated servers refuse — handled).
+        const url = await lore.repoRemoteUrl(repo.path).catch(() => "");
+        if (url) {
+          const o = await lore.runLore(["repository", "delete", url], repo.path);
+          if (!o.ok) serverMsg = o.error ?? "server refused";
+        }
+      } catch (e: any) {
+        serverMsg = e?.message ?? String(e);
+      }
+      // Remove the local .lore folder (user's files are NOT deleted).
+      await lore.removeLoreDir(repo.path).catch((e: any) => set({ error: e?.message ?? String(e) }));
+      const repos = get().repos.filter((r) => r.path !== repo.path);
+      await get().persistRepos(repos);
+      if (get().current?.path === repo.path) await get().selectRepo(null);
+      set({
+        busy: false,
+        toast: serverMsg ? `Deleted locally · server: ${serverMsg}` : "Repository deleted",
+      });
     },
 
     async clone(repo, dest) {

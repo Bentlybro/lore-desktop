@@ -6,9 +6,11 @@ import type { RepoEntry } from "../types";
 type Menu = { x: number; y: number; repo: RepoEntry };
 
 export function Sidebar({ onAdd, onSettings }: { onAdd: () => void; onSettings: () => void }) {
-  const { repos, current, selectRepo, removeRepo, renameRepo, setToast, setError } = useStore();
+  const { repos, current, selectRepo, removeRepo, renameRepo, deleteRepo, setToast, setError } =
+    useStore();
   const [menu, setMenu] = useState<Menu | null>(null);
   const [editing, setEditing] = useState<{ path: string; value: string } | null>(null);
+  const [confirmDel, setConfirmDel] = useState<RepoEntry | null>(null);
 
   useEffect(() => {
     if (!menu) return;
@@ -117,16 +119,55 @@ export function Sidebar({ onAdd, onSettings }: { onAdd: () => void; onSettings: 
             </button>
             <div className="ctx-sep" />
             <button
-              className="ctx-item ctx-danger"
+              className="ctx-item"
               onClick={() => {
                 removeRepo(menu.repo.path);
                 setMenu(null);
               }}
             >
-              Remove
+              Remove from list
+            </button>
+            <button
+              className="ctx-item ctx-danger"
+              onClick={() => {
+                setConfirmDel(menu.repo);
+                setMenu(null);
+              }}
+            >
+              Delete repository…
             </button>
           </div>
         </>
+      )}
+
+      {confirmDel && (
+        <div className="overlay" onClick={() => setConfirmDel(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <span>Delete repository</span>
+              <button onClick={() => setConfirmDel(null)}>×</button>
+            </div>
+            <div className="modal-body">
+              <div className="hint">
+                Delete <b>{confirmDel.name}</b>? This removes it from the app, deletes the local{" "}
+                <b>.lore</b> folder, and attempts to delete it on the server. Your actual project
+                files are <b>not</b> deleted.
+              </div>
+              <div className="modal-foot">
+                <button onClick={() => setConfirmDel(null)}>Cancel</button>
+                <button
+                  onClick={() => {
+                    const r = confirmDel;
+                    setConfirmDel(null);
+                    deleteRepo(r);
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

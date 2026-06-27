@@ -82,6 +82,38 @@ fn ignore_add(cwd: String, pattern: String) -> Result<(), String> {
     std::fs::write(&path, content).map_err(|e| e.to_string())
 }
 
+/// Read the repo's remote URL from `.lore/config.toml` (empty if not found).
+#[tauri::command]
+fn repo_remote_url(cwd: String) -> Result<String, String> {
+    let cfg = std::path::Path::new(&cwd).join(".lore").join("config.toml");
+    let text = std::fs::read_to_string(&cfg).unwrap_or_default();
+    for line in text.lines() {
+        let line = line.trim();
+        if let Some(rest) = line.strip_prefix("remote_url") {
+            // remote_url = "lore://..."
+            if let Some(eq) = rest.find('=') {
+                let val = rest[eq + 1..].trim().trim_matches('"').to_string();
+                return Ok(val);
+            }
+        }
+    }
+    Ok(String::new())
+}
+
+/// Remove a repo's local `.lore` directory (un-Lore the folder). Does NOT touch
+/// the user's actual files — only the `.lore` metadata folder under `cwd`.
+#[tauri::command]
+fn remove_lore_dir(cwd: String) -> Result<(), String> {
+    let dir = std::path::Path::new(&cwd).join(".lore");
+    if !dir.ends_with(".lore") {
+        return Err("refusing to delete non-.lore path".into());
+    }
+    if dir.exists() {
+        std::fs::remove_dir_all(&dir).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 /// Open a path in the OS file manager / a terminal / an external editor.
 /// `action`: "explorer" | "shell" | "editor".
 #[tauri::command]
@@ -181,6 +213,8 @@ pub fn run() {
             ignore_add,
             seed_loreignore,
             make_loreignore,
+            repo_remote_url,
+            remove_lore_dir,
             open_external,
             lore::run_lore,
             lore::run_lore_stream,

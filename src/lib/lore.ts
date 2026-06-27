@@ -126,6 +126,12 @@ export const ignoreAdd = (cwd: string, pattern: string) =>
 export const openExternal = (action: "explorer" | "shell" | "editor", path: string) =>
   invoke<void>("open_external", { action, path });
 
+// The repo's remote URL (from .lore/config.toml), or "" if absent.
+export const repoRemoteUrl = (cwd: string) => invoke<string>("repo_remote_url", { cwd });
+
+// Delete the local .lore folder (un-Lore the working tree; user files untouched).
+export const removeLoreDir = (cwd: string) => invoke<void>("remove_lore_dir", { cwd });
+
 // Seed .loreignore from an existing .gitignore (if present and no .loreignore).
 // Returns true if it created one.
 export const seedLoreignore = (cwd: string) => invoke<boolean>("seed_loreignore", { cwd });
