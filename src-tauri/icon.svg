@@ -1,0 +1,10 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" rx="184" fill="#070707"/>
+  <rect x="22" y="22" width="980" height="980" rx="164" fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="3"/>
+  <g fill="none" stroke="#ffffff" stroke-linejoin="round" stroke-linecap="round">
+    <!-- isometric cube outline -->
+    <path d="M512 246 L742 379 L742 645 L512 778 L282 645 L282 379 Z" stroke-width="18"/>
+    <!-- internal edges (the Y meeting at center) -->
+    <path d="M512 512 L742 379 M512 512 L282 379 M512 512 L512 778" stroke-width="16"/>
+  </g>
+</svg>
