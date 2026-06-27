@@ -30,7 +30,8 @@ const fileDir = (p: string): string => {
 type Menu = { x: number; y: number; file: FileRow };
 
 export function ChangesView() {
-  const { files, selectedPath, selectFile, toggleStage, stageAll, commit, ignore, busy } = useStore();
+  const { files, selectedPath, selectFile, toggleStage, stageAll, commit, ignore, makeLoreignore, busy } =
+    useStore();
   const [message, setMessage] = useState("");
   const [menu, setMenu] = useState<Menu | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
@@ -146,6 +147,20 @@ export function ChangesView() {
             }}
           >
             <div className="ctx-path">{menu.file.p}</div>
+            {menu.file.p.split("/").pop() === ".gitignore" && (
+              <>
+                <button
+                  className="ctx-item"
+                  onClick={() => {
+                    makeLoreignore(menu.file.p);
+                    setMenu(null);
+                  }}
+                >
+                  Make <span className="ctx-em">.loreignore</span>
+                </button>
+                <div className="ctx-sep" />
+              </>
+            )}
             <button
               className="ctx-item"
               onClick={() => {

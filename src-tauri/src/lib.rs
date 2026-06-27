@@ -41,6 +41,26 @@ fn seed_loreignore(cwd: String) -> Result<bool, String> {
     Ok(true)
 }
 
+/// Create a `.loreignore` from a specific `.gitignore` (by repo-relative path),
+/// placed in the same directory. Returns false if a `.loreignore` already
+/// exists there (won't overwrite). Used by the file right-click menu.
+#[tauri::command]
+fn make_loreignore(cwd: String, gitignore: String) -> Result<bool, String> {
+    let git = std::path::Path::new(&cwd).join(&gitignore);
+    if !git.exists() {
+        return Err(format!(".gitignore not found: {gitignore}"));
+    }
+    let dir = git.parent().ok_or("invalid .gitignore path")?;
+    let lore = dir.join(".loreignore");
+    if lore.exists() {
+        return Ok(false);
+    }
+    let content = std::fs::read_to_string(&git).map_err(|e| e.to_string())?;
+    std::fs::write(&lore, format!("# Seeded from .gitignore by Lore Desktop\n\n{content}"))
+        .map_err(|e| e.to_string())?;
+    Ok(true)
+}
+
 /// Append a pattern to the repo's `.loreignore` (created if missing, deduped).
 #[tauri::command]
 fn ignore_add(cwd: String, pattern: String) -> Result<(), String> {
@@ -160,6 +180,7 @@ pub fn run() {
             save_settings,
             ignore_add,
             seed_loreignore,
+            make_loreignore,
             open_external,
             lore::run_lore,
             lore::run_lore_stream,

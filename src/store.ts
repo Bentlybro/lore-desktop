@@ -45,11 +45,16 @@ function progressFromEvent(e: LoreEvent): Partial<ProgressState> | null {
     case "revisionCommitProgress":
     case "revisionCommitEnd": {
       const c = d.count ?? {};
+      const ft = c.fileTotal ?? 0;
       const bt = c.bytesTotal ?? 0;
+      const fileFrac = ft > 0 ? (c.fileCount ?? 0) / ft : -1;
+      const byteFrac = bt > 0 ? (c.bytesTransferred ?? 0) / bt : -1;
+      // Use the lagging dimension so the bar never reads "almost done" while a
+      // big chunk of work (e.g. many small files) is still outstanding.
       const frac =
-        bt > 0 ? c.bytesTransferred / bt : c.fileTotal > 0 ? c.fileCount / c.fileTotal : -1;
+        fileFrac >= 0 && byteFrac >= 0 ? Math.min(fileFrac, byteFrac) : Math.max(fileFrac, byteFrac);
       return {
-        detail: `${(c.fileCount ?? 0).toLocaleString()} / ${(c.fileTotal ?? 0).toLocaleString()} files · ${fmtBytes(c.bytesTransferred ?? 0)} / ${fmtBytes(bt)}`,
+        detail: `${(c.fileCount ?? 0).toLocaleString()} / ${ft.toLocaleString()} files · ${fmtBytes(c.bytesTransferred ?? 0)} / ${fmtBytes(bt)}`,
         frac,
       };
     }
@@ -106,6 +111,7 @@ interface AppStore {
   selectFile: (path: string) => Promise<void>;
   toggleStage: (f: FileRow) => Promise<void>;
   ignore: (path: string, kind: "file" | "ext" | "folder") => Promise<void>;
+  makeLoreignore: (gitignorePath: string) => Promise<void>;
   stageAll: () => Promise<void>;
   commit: (message: string) => Promise<void>;
   push: () => Promise<void>;
@@ -348,6 +354,16 @@ export const useStore = create<AppStore>((set, get) => {
       await guard(() => lore.ignoreAdd(current.path, pattern));
       await get().refresh(true);
       set({ toast: `Ignored ${pattern}` });
+    },
+
+    async makeLoreignore(gitignorePath) {
+      const { current } = get();
+      if (!current) return;
+      const created = await guard(() => lore.makeLoreignore(current.path, gitignorePath));
+      if (created !== undefined) {
+        set({ toast: created ? "Created .loreignore from .gitignore" : ".loreignore already exists" });
+        await get().refresh(true);
+      }
     },
 
     async stageAll() {

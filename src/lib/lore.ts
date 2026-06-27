@@ -121,6 +121,11 @@ export const openExternal = (action: "explorer" | "shell" | "editor", path: stri
 // Returns true if it created one.
 export const seedLoreignore = (cwd: string) => invoke<boolean>("seed_loreignore", { cwd });
 
+// Create a .loreignore from a specific .gitignore (by repo-relative path).
+// Returns false if a .loreignore already exists alongside it.
+export const makeLoreignore = (cwd: string, gitignore: string) =>
+  invoke<boolean>("make_loreignore", { cwd, gitignore });
+
 // ---- Push / Sync (streamed for progress) ----
 
 export const push = (cwd: string, onEvent: (e: LoreEvent) => void) =>
