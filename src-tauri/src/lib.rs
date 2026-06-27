@@ -24,6 +24,23 @@ fn save_settings(state: tauri::State<AppState>, settings: Settings) -> Result<()
     Ok(())
 }
 
+/// If the repo has a `.gitignore` but no `.loreignore`, seed `.loreignore` from
+/// it (same syntax). Returns true if a file was created. Never overwrites an
+/// existing `.loreignore`.
+#[tauri::command]
+fn seed_loreignore(cwd: String) -> Result<bool, String> {
+    let dir = std::path::Path::new(&cwd);
+    let lore_ignore = dir.join(".loreignore");
+    let git_ignore = dir.join(".gitignore");
+    if lore_ignore.exists() || !git_ignore.exists() {
+        return Ok(false);
+    }
+    let git = std::fs::read_to_string(&git_ignore).map_err(|e| e.to_string())?;
+    let content = format!("# Seeded from .gitignore by Lore Desktop\n\n{git}");
+    std::fs::write(&lore_ignore, content).map_err(|e| e.to_string())?;
+    Ok(true)
+}
+
 /// Append a pattern to the repo's `.loreignore` (created if missing, deduped).
 #[tauri::command]
 fn ignore_add(cwd: String, pattern: String) -> Result<(), String> {
@@ -43,6 +60,83 @@ fn ignore_add(cwd: String, pattern: String) -> Result<(), String> {
     content.push_str(&pattern);
     content.push('\n');
     std::fs::write(&path, content).map_err(|e| e.to_string())
+}
+
+/// Open a path in the OS file manager / a terminal / an external editor.
+/// `action`: "explorer" | "shell" | "editor".
+#[tauri::command]
+fn open_external(action: String, path: String) -> Result<(), String> {
+    use std::process::Command;
+
+    #[cfg(windows)]
+    let mut cmd = {
+        use std::os::windows::process::CommandExt;
+        let mut c = match action.as_str() {
+            "explorer" => {
+                let mut c = Command::new("explorer");
+                c.arg(&path);
+                c
+            }
+            "shell" => {
+                // New terminal window rooted at the repo.
+                let mut c = Command::new("cmd");
+                c.current_dir(&path).args(["/C", "start", "cmd"]);
+                c
+            }
+            "editor" => {
+                // VS Code if on PATH.
+                let mut c = Command::new("cmd");
+                c.args(["/C", "code", &path]);
+                c
+            }
+            other => return Err(format!("unknown action: {other}")),
+        };
+        c.creation_flags(0x0800_0000); // CREATE_NO_WINDOW (the spawned terminal still shows)
+        c
+    };
+
+    #[cfg(target_os = "macos")]
+    let mut cmd = match action.as_str() {
+        "explorer" => {
+            let mut c = Command::new("open");
+            c.arg(&path);
+            c
+        }
+        "shell" => {
+            let mut c = Command::new("open");
+            c.args(["-a", "Terminal", &path]);
+            c
+        }
+        "editor" => {
+            let mut c = Command::new("code");
+            c.arg(&path);
+            c
+        }
+        other => return Err(format!("unknown action: {other}")),
+    };
+
+    #[cfg(target_os = "linux")]
+    let mut cmd = match action.as_str() {
+        "explorer" => {
+            let mut c = Command::new("xdg-open");
+            c.arg(&path);
+            c
+        }
+        "shell" => {
+            let mut c = Command::new("x-terminal-emulator");
+            c.current_dir(&path);
+            c
+        }
+        "editor" => {
+            let mut c = Command::new("code");
+            c.arg(&path);
+            c
+        }
+        other => return Err(format!("unknown action: {other}")),
+    };
+
+    cmd.spawn().map_err(|e| format!("failed to open ({action}): {e}"))?;
+    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -65,6 +159,8 @@ pub fn run() {
             get_settings,
             save_settings,
             ignore_add,
+            seed_loreignore,
+            open_external,
             lore::run_lore,
             lore::run_lore_stream,
             lore::lore_status,

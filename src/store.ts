@@ -113,6 +113,8 @@ interface AppStore {
   switchBranch: (name: string) => Promise<void>;
   createBranch: (name: string) => Promise<void>;
   addRepo: (path: string) => Promise<void>;
+  removeRepo: (path: string) => Promise<void>;
+  renameRepo: (path: string, name: string) => Promise<void>;
   clone: (repo: string, dest: string) => Promise<void>;
   createRepo: (repo: string, dir: string) => Promise<void>;
   setError: (e: string | null) => void;
@@ -199,15 +201,31 @@ export const useStore = create<AppStore>((set, get) => {
     },
 
     // internal helpers exposed on the object below
+    // Read-only refreshers manage `busy` themselves and never clear `error`,
+    // so a refresh triggered right after a failed action can't wipe its toast.
     switchBranchRefresh: async () => {
       const { current } = get();
       if (!current) return;
-      await guard(async () => set({ branches: await lore.branchList(current.path) }));
+      set({ busy: true });
+      try {
+        set({ branches: await lore.branchList(current.path) });
+      } catch (e: any) {
+        set({ error: e?.message ?? String(e) });
+      } finally {
+        set({ busy: false });
+      }
     },
     loadHistory: async () => {
       const { current } = get();
       if (!current) return;
-      await guard(async () => set({ history: await lore.history(current.path) }));
+      set({ busy: true });
+      try {
+        set({ history: await lore.history(current.path) });
+      } catch (e: any) {
+        set({ error: e?.message ?? String(e) });
+      } finally {
+        set({ busy: false });
+      }
     },
 
     async selectRevision(r) {
@@ -248,12 +266,17 @@ export const useStore = create<AppStore>((set, get) => {
     async refresh(scan = true) {
       const { current } = get();
       if (!current) return;
-      await guard(async () => {
+      set({ busy: true });
+      try {
         const s = await lore.status(current.path, scan);
         set({ revision: s.revision ?? undefined, files: s.files });
         const sel = get().selectedPath;
         if (sel && s.files.some((f) => f.p === sel)) await get().selectFile(sel);
-      });
+      } catch (e: any) {
+        set({ error: e?.message ?? String(e) });
+      } finally {
+        set({ busy: false });
+      }
     },
 
     async onRepoChanged(paths) {
@@ -367,13 +390,14 @@ export const useStore = create<AppStore>((set, get) => {
       const { current } = get();
       if (!current) return;
       set({ progress: { active: true, title: "Pushing…", detail: "", frac: -1 } });
-      await guard(() =>
+      const ok = await guard(() =>
         lore.push(current.path, (e) => {
           const p = progressFromEvent(e);
           if (p) set((st) => ({ progress: { ...st.progress, ...p } }));
         }),
       );
-      set((st) => ({ progress: { ...st.progress, active: false }, toast: "Push complete" }));
+      set((st) => ({ progress: { ...st.progress, active: false } }));
+      if (ok !== undefined) set({ toast: "Push complete" });
       await get().refresh(false);
     },
 
@@ -381,13 +405,14 @@ export const useStore = create<AppStore>((set, get) => {
       const { current } = get();
       if (!current) return;
       set({ progress: { active: true, title: "Syncing…", detail: "", frac: -1 } });
-      await guard(() =>
+      const ok = await guard(() =>
         lore.sync(current.path, (e) => {
           const p = progressFromEvent(e);
           if (p) set((st) => ({ progress: { ...st.progress, ...p } }));
         }),
       );
-      set((st) => ({ progress: { ...st.progress, active: false }, toast: "Sync complete" }));
+      set((st) => ({ progress: { ...st.progress, active: false } }));
+      if (ok !== undefined) set({ toast: "Sync complete" });
       await get().refresh(false);
       await get().loadHistory();
     },
@@ -411,11 +436,27 @@ export const useStore = create<AppStore>((set, get) => {
     },
 
     async addRepo(path) {
+      // Auto-seed .loreignore from .gitignore so junk (build dirs, etc.) is
+      // excluded from the very first scan. No-op if either condition fails.
+      await lore.seedLoreignore(path).catch(() => {});
       const settings = get().settings as Settings;
       const entry: RepoEntry = { name: baseName(path), path, serverUrl: settings.serverUrl };
       const repos = [...get().repos.filter((r) => r.path !== path), entry];
       await get().persistRepos(repos);
       await get().selectRepo(entry);
+    },
+
+    async removeRepo(path) {
+      const repos = get().repos.filter((r) => r.path !== path);
+      await get().persistRepos(repos);
+      if (get().current?.path === path) await get().selectRepo(null);
+    },
+
+    async renameRepo(path, name) {
+      const repos = get().repos.map((r) => (r.path === path ? { ...r, name } : r));
+      await get().persistRepos(repos);
+      const cur = get().current;
+      if (cur?.path === path) set({ current: { ...cur, name } });
     },
 
     async clone(repo, dest) {

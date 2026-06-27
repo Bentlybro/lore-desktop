@@ -113,6 +113,14 @@ export const stopWatch = () => invoke<void>("stop_watch");
 export const ignoreAdd = (cwd: string, pattern: string) =>
   invoke<void>("ignore_add", { cwd, pattern });
 
+// Open a path in the OS file manager / a terminal / an external editor.
+export const openExternal = (action: "explorer" | "shell" | "editor", path: string) =>
+  invoke<void>("open_external", { action, path });
+
+// Seed .loreignore from an existing .gitignore (if present and no .loreignore).
+// Returns true if it created one.
+export const seedLoreignore = (cwd: string) => invoke<boolean>("seed_loreignore", { cwd });
+
 // ---- Push / Sync (streamed for progress) ----
 
 export const push = (cwd: string, onEvent: (e: LoreEvent) => void) =>
