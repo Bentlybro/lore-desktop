@@ -340,18 +340,33 @@ export const useStore = create<AppStore>((set, get) => {
       const { current } = get();
       if (!current) return;
       let pattern = "";
+      let target = ""; // specific path/dir to drop from staging; "" => full rebuild
       if (kind === "file") {
         pattern = "/" + path;
+        target = path;
       } else if (kind === "ext") {
         const base = path.split("/").pop() ?? "";
         const dot = base.lastIndexOf(".");
         if (dot > 0) pattern = "*" + base.slice(dot); // "*.ext"
       } else if (kind === "folder") {
         const slash = path.lastIndexOf("/");
-        if (slash >= 0) pattern = "/" + path.slice(0, slash) + "/";
+        if (slash >= 0) {
+          pattern = "/" + path.slice(0, slash) + "/";
+          target = path.slice(0, slash);
+        }
       }
       if (!pattern) return;
-      await guard(() => lore.ignoreAdd(current.path, pattern));
+      await guard(async () => {
+        await lore.ignoreAdd(current.path, pattern);
+        // Drop the now-ignored path(s) from the staged set + clear stale dirty
+        // flags, so the commit won't still try to read them.
+        if (target) {
+          await lore.unstage(current.path, [target]);
+          await lore.scanPaths(current.path, [target]);
+        } else {
+          await lore.reconcileStaging(current.path); // *.ext — rebuild staging
+        }
+      });
       await get().refresh(true);
       set({ toast: `Ignored ${pattern}` });
     },
@@ -359,7 +374,12 @@ export const useStore = create<AppStore>((set, get) => {
     async makeLoreignore(gitignorePath) {
       const { current } = get();
       if (!current) return;
-      const created = await guard(() => lore.makeLoreignore(current.path, gitignorePath));
+      const created = await guard(async () => {
+        const c = await lore.makeLoreignore(current.path, gitignorePath);
+        // Rebuild staging so all the newly-ignored junk drops out of the commit.
+        if (c) await lore.reconcileStaging(current.path);
+        return c;
+      });
       if (created !== undefined) {
         set({ toast: created ? "Created .loreignore from .gitignore" : ".loreignore already exists" });
         await get().refresh(true);

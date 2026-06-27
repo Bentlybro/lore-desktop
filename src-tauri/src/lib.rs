@@ -36,7 +36,7 @@ fn seed_loreignore(cwd: String) -> Result<bool, String> {
         return Ok(false);
     }
     let git = std::fs::read_to_string(&git_ignore).map_err(|e| e.to_string())?;
-    let content = format!("# Seeded from .gitignore by Lore Desktop\n\n{git}");
+    let content = format!("# Seeded from .gitignore by Lore Desktop\n.git/\n\n{git}");
     std::fs::write(&lore_ignore, content).map_err(|e| e.to_string())?;
     Ok(true)
 }
@@ -56,7 +56,7 @@ fn make_loreignore(cwd: String, gitignore: String) -> Result<bool, String> {
         return Ok(false);
     }
     let content = std::fs::read_to_string(&git).map_err(|e| e.to_string())?;
-    std::fs::write(&lore, format!("# Seeded from .gitignore by Lore Desktop\n\n{content}"))
+    std::fs::write(&lore, format!("# Seeded from .gitignore by Lore Desktop\n.git/\n\n{content}"))
         .map_err(|e| e.to_string())?;
     Ok(true)
 }

@@ -78,6 +78,15 @@ export const unstage = (cwd: string, files: string[]) =>
 export const stageAllDir = (cwd: string) => runLore(["stage", "."], cwd).then(ensureOk);
 export const unstageAllDir = (cwd: string) => runLore(["unstage", "."], cwd).then(ensureOk);
 
+// Rebuild the staged set from scratch, respecting .loreignore: clears the
+// staged anchor, then re-scans + re-stages only non-ignored changes. Used after
+// .loreignore changes so already-staged-but-now-ignored files drop out (and
+// their stale dirty flags clear), which a plain "stage ." would otherwise keep.
+export async function reconcileStaging(cwd: string) {
+  await runLore(["unstage", "."], cwd).then(ensureOk);
+  return runLore(["stage", ".", "--scan"], cwd).then(ensureOk);
+}
+
 // ---- Commit ----
 
 export interface CommitResult {
