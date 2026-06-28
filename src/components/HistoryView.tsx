@@ -1,10 +1,5 @@
 import { useStore } from "../store";
-
-function when(ts?: number): string {
-  if (!ts) return "";
-  const d = new Date(ts);
-  return isNaN(d.getTime()) ? "" : d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-}
+import { formatDate } from "../lib/format";
 
 export function HistoryView() {
   const { history, selectedRevision, selectRevision } = useStore();
@@ -24,7 +19,7 @@ export function HistoryView() {
           <div className="history-sub">
             <span className="hash">{r.revision.slice(0, 10)}</span>
             {r.creator ? <span>· {r.creator}</span> : null}
-            {r.timestamp ? <span>· {when(r.timestamp)}</span> : null}
+            {r.timestamp ? <span>· {formatDate(r.timestamp)}</span> : null}
           </div>
         </div>
       ))}

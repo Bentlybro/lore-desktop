@@ -3,34 +3,8 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { EyeOff, Copy, CheckCheck, FileCog } from "lucide-react";
 import { useStore } from "../store";
 import type { FileRow } from "../types";
-
-function badge(f: FileRow): { label: string; cls: string } {
-  if (f.c) return { label: "C", cls: "b-con" };
-  switch (f.a) {
-    case "add":
-      return { label: "A", cls: "b-add" };
-    case "delete":
-      return { label: "D", cls: "b-del" };
-    case "move":
-      return { label: "R", cls: "b-ren" };
-    default:
-      return { label: "M", cls: "b-mod" };
-  }
-}
-
-const fileExt = (p: string) => {
-  const base = p.split("/").pop() ?? "";
-  const dot = base.lastIndexOf(".");
-  return dot > 0 ? base.slice(dot + 1) : "";
-};
-const fileDir = (p: string) => {
-  const slash = p.lastIndexOf("/");
-  return slash >= 0 ? p.slice(0, slash) : "";
-};
-const splitPath = (p: string) => {
-  const i = p.lastIndexOf("/");
-  return i >= 0 ? { dir: p.slice(0, i + 1), name: p.slice(i + 1) } : { dir: "", name: p };
-};
+import { actionBadge } from "../lib/badges";
+import { splitPath, fileDir, fileExt } from "../lib/paths";
 
 type Menu = { x: number; y: number; file: FileRow };
 
@@ -81,7 +55,7 @@ export function ChangesView() {
           <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative", width: "100%" }}>
             {rowVirtualizer.getVirtualItems().map((vi) => {
               const f = files[vi.index];
-              const b = badge(f);
+              const b = actionBadge(f.a, f.c);
               const sp = splitPath(f.p);
               return (
                 <div

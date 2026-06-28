@@ -1,30 +1,9 @@
 import { GitCommitHorizontal, FileText } from "lucide-react";
 import { useStore } from "../store";
 import { DiffBody } from "./DiffView";
-
-const splitPath = (p: string) => {
-  const i = p.lastIndexOf("/");
-  return i >= 0 ? { dir: p.slice(0, i + 1), name: p.slice(i + 1) } : { dir: "", name: p };
-};
-
-function actionBadge(a: string): { label: string; cls: string } {
-  switch (a) {
-    case "add":
-      return { label: "A", cls: "b-add" };
-    case "delete":
-      return { label: "D", cls: "b-del" };
-    case "move":
-      return { label: "R", cls: "b-ren" };
-    default:
-      return { label: "M", cls: "b-mod" };
-  }
-}
-
-function when(ts?: number): string {
-  if (!ts) return "";
-  const d = new Date(ts);
-  return isNaN(d.getTime()) ? "" : d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-}
+import { splitPath } from "../lib/paths";
+import { actionBadge } from "../lib/badges";
+import { formatDate } from "../lib/format";
 
 export function CommitDetail() {
   const { selectedRevision, commitFiles, commitFileSelected, selectCommitFile, diff, diffLoading, busy } =
@@ -48,7 +27,7 @@ export function CommitDetail() {
         <div className="commit-summary-sub">
           <span className="rev-num">#{r.revisionNumber}</span>
           {r.creator ? <span>{r.creator}</span> : null}
-          {r.timestamp ? <span>{when(r.timestamp)}</span> : null}
+          {r.timestamp ? <span>{formatDate(r.timestamp)}</span> : null}
           <span className="hash mono" style={{ marginLeft: "auto" }}>
             {r.revision.slice(0, 10)}
           </span>
