@@ -36,6 +36,15 @@ export const createHistorySlice = (set: StoreSet, get: StoreGet): HistorySlice =
     });
   },
 
+  async revertRevision(rev) {
+    const { current } = get();
+    if (!current) return;
+    const ok = await guard(set, () => lore.revert(current.path, rev.revision));
+    if (ok !== undefined) set({ toast: `Reverted #${rev.revisionNumber}` });
+    await get().refresh(true);
+    await get().loadHistory();
+  },
+
   async selectCommitFile(path) {
     const { current, selectedRevision } = get();
     if (!current || !selectedRevision) return;

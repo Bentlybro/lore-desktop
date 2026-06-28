@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { EyeOff, Copy, CheckCheck, FileCog } from "lucide-react";
+import { EyeOff, Copy, CheckCheck, FileCog, RotateCcw, FileClock, TriangleAlert, Check, PenLine } from "lucide-react";
 import { useStore } from "../store";
 import type { FileRow } from "../types";
 import { actionBadge } from "../lib/badges";
@@ -9,9 +9,29 @@ import { splitPath, fileDir, fileExt } from "../lib/paths";
 type Menu = { x: number; y: number; file: FileRow };
 
 export function ChangesView() {
-  const { files, selectedPath, selectFile, toggleStage, stageAll, commit, ignore, makeLoreignore, busy } =
-    useStore();
+  const {
+    files,
+    selectedPath,
+    selectFile,
+    toggleStage,
+    stageAll,
+    discard,
+    discardAll,
+    commit,
+    amend,
+    history,
+    ignore,
+    makeLoreignore,
+    askConfirm,
+    openFileHistory,
+    openRename,
+    abortMerge,
+    resolveConflict,
+    resolveAllConflicts,
+    busy,
+  } = useStore();
   const [message, setMessage] = useState("");
+  const [amendMode, setAmendMode] = useState(false);
   const [menu, setMenu] = useState<Menu | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -23,7 +43,10 @@ export function ChangesView() {
   });
 
   const stagedCount = files.reduce((n, f) => n + (f.s ? 1 : 0), 0);
-  const canCommit = stagedCount > 0 && message.trim().length > 0 && !busy;
+  const conflictCount = files.reduce((n, f) => n + (f.c ? 1 : 0), 0);
+  const canCommit = !amendMode && stagedCount > 0 && message.trim().length > 0 && !busy;
+  const canAmend = amendMode && history.length > 0 && message.trim().length > 0 && !busy;
+  const canSubmit = amendMode ? canAmend : canCommit;
 
   useEffect(() => {
     if (!menu) return;
@@ -38,14 +61,64 @@ export function ChangesView() {
 
   return (
     <div className="changes">
+      {conflictCount > 0 && (
+        <div className="conflict-banner">
+          <span className="cb-text">
+            <TriangleAlert size={14} />
+            {conflictCount} conflict{conflictCount === 1 ? "" : "s"} — resolve, then commit
+          </span>
+          <span className="cb-actions">
+            <button className="btn btn-sm" onClick={() => resolveAllConflicts("mine")} disabled={busy}>
+              Use mine
+            </button>
+            <button className="btn btn-sm" onClick={() => resolveAllConflicts("theirs")} disabled={busy}>
+              Use theirs
+            </button>
+            <button
+              className="btn btn-sm btn-danger"
+              disabled={busy}
+              onClick={() =>
+                askConfirm({
+                  title: "Abort merge?",
+                  message: "Discard the in-progress merge and restore the previous state.",
+                  confirmLabel: "Abort merge",
+                  danger: true,
+                  onConfirm: abortMerge,
+                })
+              }
+            >
+              Abort
+            </button>
+          </span>
+        </div>
+      )}
       <div className="changes-toolbar">
         <span>
           {files.length.toLocaleString()} change{files.length === 1 ? "" : "s"} ·{" "}
           {stagedCount.toLocaleString()} staged
         </span>
-        <button className="btn" onClick={stageAll} disabled={busy || files.length === 0}>
-          <CheckCheck size={14} /> Stage all
-        </button>
+        <span style={{ display: "flex", gap: 6 }}>
+          <button
+            className="btn-ghost"
+            title="Discard all changes"
+            onClick={() =>
+              askConfirm({
+                title: "Discard all changes?",
+                message:
+                  "Every uncommitted change in the working tree will be reverted, and new files deleted. This cannot be undone.",
+                confirmLabel: "Discard all",
+                danger: true,
+                onConfirm: discardAll,
+              })
+            }
+            disabled={busy || files.length === 0}
+          >
+            <RotateCcw size={14} />
+          </button>
+          <button className="btn" onClick={stageAll} disabled={busy || files.length === 0}>
+            <CheckCheck size={14} /> Stage all
+          </button>
+        </span>
       </div>
 
       <div className="list file-list" ref={parentRef}>
@@ -98,20 +171,36 @@ export function ChangesView() {
         className="commit-box"
         onSubmit={(e) => {
           e.preventDefault();
-          if (canCommit) {
-            commit(message.trim());
-            setMessage("");
-          }
+          if (!canSubmit) return;
+          if (amendMode) amend(message.trim());
+          else commit(message.trim());
+          setMessage("");
+          setAmendMode(false);
         }}
       >
         <textarea
-          placeholder="Commit message"
+          placeholder={amendMode ? "Amend commit message" : "Commit message"}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
         />
-        <button className="btn btn-primary" type="submit" disabled={!canCommit}>
-          Commit{stagedCount > 0 ? ` · ${stagedCount.toLocaleString()}` : ""}
-        </button>
+        <div className="commit-actions">
+          <label className="amend-toggle" title={history.length === 0 ? "No commit to amend" : "Rewrite the last commit"}>
+            <input
+              type="checkbox"
+              checked={amendMode}
+              disabled={history.length === 0}
+              onChange={(e) => {
+                const on = e.target.checked;
+                setAmendMode(on);
+                if (on && !message.trim()) setMessage(history[0]?.message ?? "");
+              }}
+            />
+            Amend last commit
+          </label>
+          <button className="btn btn-primary" type="submit" disabled={!canSubmit}>
+            {amendMode ? "Amend" : `Commit${stagedCount > 0 ? ` · ${stagedCount.toLocaleString()}` : ""}`}
+          </button>
+        </div>
       </form>
 
       {menu && (
@@ -132,6 +221,17 @@ export function ChangesView() {
             }}
           >
             <div className="ctx-path">{menu.file.p}</div>
+            {menu.file.c && (
+              <>
+                <button className="ctx-item" onClick={() => { resolveConflict(menu.file.p, "mine"); setMenu(null); }}>
+                  <Check /> Resolve using mine
+                </button>
+                <button className="ctx-item" onClick={() => { resolveConflict(menu.file.p, "theirs"); setMenu(null); }}>
+                  <Check /> Resolve using theirs
+                </button>
+                <div className="ctx-sep" />
+              </>
+            )}
             {isGitignore && (
               <>
                 <button className="ctx-item" onClick={() => { makeLoreignore(menu.file.p); setMenu(null); }}>
@@ -142,6 +242,32 @@ export function ChangesView() {
             )}
             <button className="ctx-item" onClick={() => { toggleStage(menu.file); setMenu(null); }}>
               <CheckCheck /> {menu.file.s ? "Unstage" : "Stage"}
+            </button>
+            <button
+              className="ctx-item ctx-danger"
+              onClick={() => {
+                const f = menu.file;
+                askConfirm({
+                  title: `Discard changes to ${f.p.split("/").pop()}?`,
+                  message:
+                    f.a === "add"
+                      ? "This new file will be deleted. This cannot be undone."
+                      : "Your changes to this file will be lost. This cannot be undone.",
+                  confirmLabel: "Discard",
+                  danger: true,
+                  onConfirm: () => discard(f),
+                });
+                setMenu(null);
+              }}
+            >
+              <RotateCcw /> Discard changes
+            </button>
+            <div className="ctx-sep" />
+            <button className="ctx-item" onClick={() => { openRename(menu.file.p); setMenu(null); }}>
+              <PenLine /> Move / rename…
+            </button>
+            <button className="ctx-item" onClick={() => { openFileHistory(menu.file.p); setMenu(null); }}>
+              <FileClock /> View history
             </button>
             <div className="ctx-sep" />
             <button className="ctx-item" onClick={() => { ignore(menu.file.p, "file"); setMenu(null); }}>

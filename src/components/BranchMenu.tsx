@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Search, GitBranch, Check } from "lucide-react";
+import { Search, GitBranch, Check, GitMerge } from "lucide-react";
 import { useStore } from "../store";
 
 export function BranchMenu({ onClose }: { onClose: () => void }) {
-  const { branches, switchBranch, createBranch, busy } = useStore();
+  const { branches, switchBranch, createBranch, mergeBranch, askConfirm, busy } = useStore();
   const [query, setQuery] = useState("");
   const [name, setName] = useState("");
+  const currentName = branches.find((b) => b.isCurrent)?.name ?? "current";
 
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -45,7 +46,27 @@ export function BranchMenu({ onClose }: { onClose: () => void }) {
                 <GitBranch size={14} />
                 {b.name}
               </span>
-              {b.isCurrent && <Check size={15} style={{ color: "var(--accent)" }} />}
+              {b.isCurrent ? (
+                <Check size={15} style={{ color: "var(--accent)" }} />
+              ) : (
+                <button
+                  className="branch-merge"
+                  title={`Merge ${b.name} into ${currentName}`}
+                  disabled={busy}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    askConfirm({
+                      title: `Merge "${b.name}" into "${currentName}"?`,
+                      message: `Changes from ${b.name} will be merged into your current branch. If there are conflicts you'll resolve them before committing.`,
+                      confirmLabel: "Merge",
+                      onConfirm: () => mergeBranch(b.name),
+                    });
+                    onClose();
+                  }}
+                >
+                  <GitMerge size={14} />
+                </button>
+              )}
             </div>
           ))}
         </div>

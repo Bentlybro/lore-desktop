@@ -22,6 +22,9 @@ import { BranchMenu } from "./components/BranchMenu";
 import { AddRepoModal } from "./components/AddRepoModal";
 import { SettingsModal } from "./components/SettingsModal";
 import { ProgressOverlay, Toast } from "./components/ProgressOverlay";
+import { ConfirmModal } from "./components/ConfirmModal";
+import { FileHistoryModal } from "./components/FileHistoryModal";
+import { RenameModal } from "./components/RenameModal";
 import { WindowControls } from "./components/WindowControls";
 
 function App() {
@@ -177,6 +180,9 @@ function App() {
       {addOpen && <AddRepoModal onClose={() => setAddOpen(false)} />}
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
       <ProgressOverlay />
+      <ConfirmModal />
+      <FileHistoryModal />
+      <RenameModal />
       <Toast />
     </div>
   );

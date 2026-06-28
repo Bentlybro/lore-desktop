@@ -145,6 +145,35 @@ export const createChangesSlice = (set: StoreSet, get: StoreGet): ChangesSlice =
     }
   },
 
+  async discard(file) {
+    const { current } = get();
+    if (!current) return;
+    // New (untracked) files must be purged to discard them; tracked files are
+    // restored to their committed state.
+    await guard(set, () => lore.reset(current.path, [file.p], { purge: file.a === "add" }));
+    if (get().selectedPath === file.p) set({ selectedPath: null, diff: "" });
+    await get().refresh(true);
+    set({ toast: `Discarded ${file.p.split("/").pop()}` });
+  },
+
+  async discardAll() {
+    const { current, files } = get();
+    if (!current || files.length === 0) return;
+    await guard(set, () => lore.reset(current.path, ["."], { purge: true }));
+    set({ selectedPath: null, diff: "" });
+    await get().refresh(true);
+    set({ toast: "Discarded all changes" });
+  },
+
+  async moveFile(from, to) {
+    const { current } = get();
+    if (!current || !to.trim() || to.trim() === from) return;
+    await guard(set, () => lore.stageMove(current.path, from, to.trim()));
+    if (get().selectedPath === from) set({ selectedPath: null, diff: "" });
+    await get().refresh(true);
+    set({ toast: `Moved to ${to.trim().split("/").pop()}` });
+  },
+
   async commit(message) {
     const { current } = get();
     if (!current) return;
@@ -159,6 +188,17 @@ export const createChangesSlice = (set: StoreSet, get: StoreGet): ChangesSlice =
     );
     set((st) => ({ progress: { ...st.progress, active: false } }));
     if (ok !== undefined) set({ toast: "Committed" });
+    await get().refresh(false);
+    await get().loadHistory();
+  },
+
+  async amend(message) {
+    const { current } = get();
+    if (!current) return;
+    set({ progress: { active: true, title: "Amending…", detail: "Rewriting last commit…", frac: -1 } });
+    const ok = await guard(set, () => lore.amend(current.path, message));
+    set((st) => ({ progress: { ...st.progress, active: false } }));
+    if (ok !== undefined) set({ toast: "Amended last commit" });
     await get().refresh(false);
     await get().loadHistory();
   },

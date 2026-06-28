@@ -44,7 +44,11 @@ export interface ChangesSlice {
   ignore: (path: string, kind: "file" | "ext" | "folder") => Promise<void>;
   makeLoreignore: (gitignorePath: string) => Promise<void>;
   stageAll: () => Promise<void>;
+  discard: (file: FileRow) => Promise<void>;
+  discardAll: () => Promise<void>;
+  moveFile: (from: string, to: string) => Promise<void>;
   commit: (message: string) => Promise<void>;
+  amend: (message: string) => Promise<void>;
   push: () => Promise<void>;
   sync: () => Promise<void>;
 }
@@ -54,6 +58,10 @@ export interface BranchSlice {
   switchBranchRefresh: () => Promise<void>;
   switchBranch: (name: string) => Promise<void>;
   createBranch: (name: string) => Promise<void>;
+  mergeBranch: (name: string) => Promise<void>;
+  abortMerge: () => Promise<void>;
+  resolveConflict: (path: string, side: "mine" | "theirs") => Promise<void>;
+  resolveAllConflicts: (side: "mine" | "theirs") => Promise<void>;
 }
 
 export interface HistorySlice {
@@ -64,6 +72,15 @@ export interface HistorySlice {
   loadHistory: () => Promise<void>;
   selectRevision: (r: Revision) => Promise<void>;
   selectCommitFile: (path: string) => Promise<void>;
+  revertRevision: (rev: Revision) => Promise<void>;
+}
+
+export interface ConfirmState {
+  title: string;
+  message?: string;
+  confirmLabel?: string;
+  danger?: boolean;
+  onConfirm: () => void;
 }
 
 export interface UiSlice {
@@ -71,8 +88,17 @@ export interface UiSlice {
   progress: ProgressState;
   error: string | null;
   toast: string | null;
+  confirm: ConfirmState | null;
+  fileHistoryPath: string | null;
+  renamePath: string | null;
   setError: (e: string | null) => void;
   setToast: (t: string | null) => void;
+  askConfirm: (c: ConfirmState) => void;
+  closeConfirm: () => void;
+  openFileHistory: (path: string) => void;
+  closeFileHistory: () => void;
+  openRename: (path: string) => void;
+  closeRename: () => void;
 }
 
 export type AppStore = ReposSlice & ChangesSlice & BranchSlice & HistorySlice & UiSlice;
