@@ -35,6 +35,8 @@ export const createReposSlice = (set: StoreSet, get: StoreGet): ReposSlice => ({
       diff: "",
       branches: [],
       history: [],
+      historyLimit: 100,
+      historyHasMore: false,
       revision: undefined,
       selectedRevision: null,
       commitFiles: [],

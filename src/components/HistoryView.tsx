@@ -9,6 +9,8 @@ type Menu = { x: number; y: number; rev: Revision };
 export function HistoryView() {
   const {
     history,
+    historyHasMore,
+    loadMoreHistory,
     selectedRevision,
     selectRevision,
     revertRevision,
@@ -18,6 +20,7 @@ export function HistoryView() {
     setTab,
     askConfirm,
     setToast,
+    busy,
   } = useStore();
   const [menu, setMenu] = useState<Menu | null>(null);
 
@@ -55,6 +58,11 @@ export function HistoryView() {
             </div>
           </div>
         ))}
+        {historyHasMore && (
+          <button className="load-more" onClick={() => loadMoreHistory()} disabled={busy}>
+            Load more
+          </button>
+        )}
       </div>
 
       {menu && (

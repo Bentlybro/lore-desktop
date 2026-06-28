@@ -77,10 +77,13 @@ export interface BranchSlice {
 
 export interface HistorySlice {
   history: Revision[];
+  historyLimit: number;
+  historyHasMore: boolean;
   selectedRevision: Revision | null;
   commitFiles: CommitFileRow[];
   commitFileSelected: string | null;
   loadHistory: () => Promise<void>;
+  loadMoreHistory: () => Promise<void>;
   selectRevision: (r: Revision) => Promise<void>;
   selectCommitFile: (path: string) => Promise<void>;
   revertRevision: (rev: Revision) => Promise<void>;
@@ -96,6 +99,13 @@ export interface ConfirmState {
   onConfirm: () => void;
 }
 
+export interface CompareRefs {
+  baseRev: string;
+  baseLabel: string;
+  targetRev: string;
+  targetLabel: string;
+}
+
 export interface UiSlice {
   busy: boolean;
   progress: ProgressState;
@@ -104,6 +114,7 @@ export interface UiSlice {
   confirm: ConfirmState | null;
   fileHistoryPath: string | null;
   renamePath: string | null;
+  compare: CompareRefs | null;
   setError: (e: string | null) => void;
   setToast: (t: string | null) => void;
   askConfirm: (c: ConfirmState) => void;
@@ -112,6 +123,8 @@ export interface UiSlice {
   closeFileHistory: () => void;
   openRename: (path: string) => void;
   closeRename: () => void;
+  openCompare: (c: CompareRefs) => void;
+  closeCompare: () => void;
 }
 
 export type AppStore = ReposSlice & ChangesSlice & BranchSlice & HistorySlice & UiSlice;

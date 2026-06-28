@@ -8,6 +8,7 @@ export const createUiSlice = (set: StoreSet): UiSlice => ({
   confirm: null,
   fileHistoryPath: null,
   renamePath: null,
+  compare: null,
   setError(e) {
     set({ error: e });
   },
@@ -31,5 +32,11 @@ export const createUiSlice = (set: StoreSet): UiSlice => ({
   },
   closeRename() {
     set({ renamePath: null });
+  },
+  openCompare(c) {
+    set({ compare: c });
+  },
+  closeCompare() {
+    set({ compare: null });
   },
 });

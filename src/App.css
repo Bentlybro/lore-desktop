@@ -924,6 +924,19 @@ button:active:not(:disabled) {
   cursor: pointer;
   border-left: 2px solid transparent;
 }
+.load-more {
+  width: 100%;
+  padding: 9px;
+  border: none;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 12px;
+  cursor: pointer;
+}
+.load-more:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--text);
+}
 .history-row:hover {
   background: var(--surface-2);
 }

@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { X, ShieldCheck, Trash2, Info } from "lucide-react";
+import { X, ShieldCheck, Trash2, Info, Tag } from "lucide-react";
 import { useStore } from "../store";
 import * as lore from "../lib/lore";
-import type { RepositoryInfo } from "../lib/lore";
+import type { RepositoryInfo, MetadataEntry } from "../lib/lore";
 import { formatDate } from "../lib/format";
 import type { Settings } from "../types";
 
@@ -11,8 +11,11 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
   const [draft, setDraft] = useState<Settings>(
     settings ?? { serverUrl: "", identity: "", lorePath: "", repos: [] },
   );
-  const [running, setRunning] = useState<"info" | "verify" | "gc" | null>(null);
+  const [running, setRunning] = useState<"info" | "verify" | "gc" | "meta" | null>(null);
   const [info, setInfo] = useState<RepositoryInfo | null>(null);
+  const [meta, setMeta] = useState<MetadataEntry[] | null>(null);
+  const [mk, setMk] = useState("");
+  const [mv, setMv] = useState("");
 
   const field = (key: keyof Settings, value: string) => setDraft({ ...draft, [key]: value });
 
@@ -47,6 +50,32 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
     try {
       await lore.repositoryGc(current.path);
       setToast("Garbage collection complete");
+    } catch (e: any) {
+      setError(e?.message ?? String(e));
+    } finally {
+      setRunning(null);
+    }
+  };
+  const runMeta = async () => {
+    if (!current) return;
+    setRunning("meta");
+    try {
+      setMeta(await lore.repositoryMetadataGet(current.path));
+    } catch (e: any) {
+      setError(e?.message ?? String(e));
+    } finally {
+      setRunning(null);
+    }
+  };
+  const saveMeta = async () => {
+    if (!current || !mk.trim()) return;
+    setRunning("meta");
+    try {
+      await lore.repositoryMetadataSet(current.path, mk.trim(), mv);
+      setMk("");
+      setMv("");
+      setMeta(await lore.repositoryMetadataGet(current.path));
+      setToast("Metadata set");
     } catch (e: any) {
       setError(e?.message ?? String(e));
     } finally {
@@ -95,7 +124,32 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                 <button className="btn" disabled={!!running} onClick={runGc}>
                   <Trash2 size={14} /> {running === "gc" ? "Collecting…" : "GC"}
                 </button>
+                <button className="btn" disabled={!!running} onClick={runMeta}>
+                  <Tag size={14} /> {running === "meta" ? "…" : "Metadata"}
+                </button>
               </div>
+              {meta && (
+                <>
+                  <div className="maint-info mono">
+                    {meta.length === 0 ? (
+                      <div>(no metadata set)</div>
+                    ) : (
+                      meta.map((m) => (
+                        <div key={m.key}>
+                          {m.key}: {m.value}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div className="maint-row">
+                    <input style={{ flex: 1 }} placeholder="key" value={mk} onChange={(e) => setMk(e.target.value)} />
+                    <input style={{ flex: 1 }} placeholder="value" value={mv} onChange={(e) => setMv(e.target.value)} />
+                    <button className="btn" disabled={!!running || !mk.trim()} onClick={saveMeta}>
+                      Set
+                    </button>
+                  </div>
+                </>
+              )}
               {info && (
                 <div className="maint-info mono">
                   <div>

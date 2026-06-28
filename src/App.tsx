@@ -25,6 +25,7 @@ import { ProgressOverlay, Toast } from "./components/ProgressOverlay";
 import { ConfirmModal } from "./components/ConfirmModal";
 import { FileHistoryModal } from "./components/FileHistoryModal";
 import { RenameModal } from "./components/RenameModal";
+import { CompareModal } from "./components/CompareModal";
 import { WindowControls } from "./components/WindowControls";
 
 function App() {
@@ -195,6 +196,7 @@ function App() {
       <ConfirmModal />
       <FileHistoryModal />
       <RenameModal />
+      <CompareModal />
       <Toast />
     </div>
   );

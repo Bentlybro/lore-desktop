@@ -5,8 +5,9 @@ export interface FileRevision extends Revision {
   action: string;
 }
 
-export async function history(cwd: string): Promise<Revision[]> {
-  const o = ensureOk(await runLore(["revision", "history"], cwd));
+export async function history(cwd: string, length?: number): Promise<Revision[]> {
+  const args = length ? ["revision", "history", String(length)] : ["revision", "history"];
+  const o = ensureOk(await runLore(args, cwd));
   // History interleaves a revisionHistoryEntry with following metadata events.
   const revs: Revision[] = [];
   let current: Revision | null = null;

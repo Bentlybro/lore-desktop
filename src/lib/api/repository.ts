@@ -69,3 +69,21 @@ export async function verifyState(cwd: string): Promise<{ healthy: boolean }> {
 
 /** Garbage-collect the repository (reclaim space from unreferenced data). */
 export const repositoryGc = (cwd: string) => runLore(["repository", "gc"], cwd).then(ensureOk);
+
+export interface MetadataEntry {
+  key: string;
+  value: string;
+}
+
+/** All repository metadata key/value pairs. */
+export async function repositoryMetadataGet(cwd: string): Promise<MetadataEntry[]> {
+  const o = ensureOk(await runLore(["repository", "metadata", "get"], cwd));
+  return (dataOf(o, "metadata") as any[]).map((d) => ({
+    key: d.key,
+    value: d.value?.data != null ? String(d.value.data) : "",
+  }));
+}
+
+/** Set a repository metadata key to a (string) value. */
+export const repositoryMetadataSet = (cwd: string, key: string, value: string) =>
+  runLore(["repository", "metadata", "set", key, value], cwd).then(ensureOk);

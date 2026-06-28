@@ -166,6 +166,10 @@ describe("history parsing", () => {
       { revision: "a", revisionNumber: 1, parent: ["p"], message: "hi", creator: "me", timestamp: 123 },
     ]);
   });
+  it("history passes a length when paginating", async () => {
+    await history.history(CWD, 50);
+    expect(lastArgs()).toEqual(["revision", "history", "50"]);
+  });
   it("fileHistory captures the per-revision action", async () => {
     ev([
       { tagName: "fileHistory", data: { revision: "a", revisionNumber: 2, parent: ["p", "0"], action: "move" } },
@@ -241,6 +245,16 @@ describe("repository args + parsing", () => {
   it("gc command", async () => {
     await repository.repositoryGc(CWD);
     expect(lastArgs()).toEqual(["repository", "gc"]);
+  });
+  it("metadata get parses key/value pairs", async () => {
+    ev([{ tagName: "metadata", data: { key: "k", value: { data: "v" } } }]);
+    const m = await repository.repositoryMetadataGet(CWD);
+    expect(lastArgs()).toEqual(["repository", "metadata", "get"]);
+    expect(m).toEqual([{ key: "k", value: "v" }]);
+  });
+  it("metadata set passes key + value", async () => {
+    await repository.repositoryMetadataSet(CWD, "k", "v");
+    expect(lastArgs()).toEqual(["repository", "metadata", "set", "k", "v"]);
   });
 });
 

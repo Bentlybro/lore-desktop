@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Search, GitBranch, Check, GitMerge, Copy, Shield, ShieldOff, Archive } from "lucide-react";
+import { Search, GitBranch, Check, GitMerge, GitCompare, Copy, Shield, ShieldOff, Archive } from "lucide-react";
 import { useStore } from "../store";
 import type { Branch } from "../types";
 
@@ -13,6 +13,7 @@ export function BranchMenu({ onClose }: { onClose: () => void }) {
     mergeBranch,
     archiveBranch,
     protectBranch,
+    openCompare,
     askConfirm,
     setToast,
     busy,
@@ -20,7 +21,8 @@ export function BranchMenu({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState("");
   const [name, setName] = useState("");
   const [menu, setMenu] = useState<Menu | null>(null);
-  const currentName = branches.find((b) => b.isCurrent)?.name ?? "current";
+  const currentBranch = branches.find((b) => b.isCurrent);
+  const currentName = currentBranch?.name ?? "current";
 
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
@@ -152,6 +154,23 @@ export function BranchMenu({ onClose }: { onClose: () => void }) {
                 >
                   <GitMerge /> Merge into {currentName}
                 </button>
+                {currentBranch && (
+                  <button
+                    className="ctx-item"
+                    onClick={() => {
+                      openCompare({
+                        baseRev: menu.branch.latest,
+                        baseLabel: menu.branch.name,
+                        targetRev: currentBranch.latest,
+                        targetLabel: currentBranch.name,
+                      });
+                      setMenu(null);
+                      onClose();
+                    }}
+                  >
+                    <GitCompare /> Compare with {currentName}
+                  </button>
+                )}
                 <div className="ctx-sep" />
               </>
             )}

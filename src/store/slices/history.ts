@@ -2,23 +2,33 @@ import type { HistorySlice, StoreSet, StoreGet } from "../types";
 import * as lore from "../../lib/lore";
 import { guard } from "../guard";
 
+const HISTORY_PAGE = 100;
+
 export const createHistorySlice = (set: StoreSet, get: StoreGet): HistorySlice => ({
   history: [],
+  historyLimit: HISTORY_PAGE,
+  historyHasMore: false,
   selectedRevision: null,
   commitFiles: [],
   commitFileSelected: null,
 
   async loadHistory() {
-    const { current } = get();
+    const { current, historyLimit } = get();
     if (!current) return;
     set({ busy: true });
     try {
-      set({ history: await lore.history(current.path) });
+      const revs = await lore.history(current.path, historyLimit);
+      set({ history: revs, historyHasMore: revs.length >= historyLimit });
     } catch (e: any) {
       set({ error: e?.message ?? String(e) });
     } finally {
       set({ busy: false });
     }
+  },
+
+  async loadMoreHistory() {
+    set({ historyLimit: get().historyLimit + HISTORY_PAGE });
+    await get().loadHistory();
   },
 
   async selectRevision(r) {
