@@ -204,10 +204,16 @@ export const createChangesSlice = (set: StoreSet, get: StoreGet): ChangesSlice =
   async moveFile(from, to) {
     const { current } = get();
     if (!current || !to.trim() || to.trim() === from) return;
-    await guard(set, () => lore.stageMove(current.path, from, to.trim()));
+    const dest = to.trim();
+    // `lore stage move` only records a rename — it doesn't move the file. Move
+    // it on disk first, then record it so history is preserved.
+    await guard(set, async () => {
+      await lore.movePath(current.path, from, dest);
+      await lore.stageMove(current.path, from, dest);
+    });
     if (get().selectedPath === from) set({ selectedPath: null, diff: "" });
     await get().refresh(true);
-    set({ toast: `Moved to ${to.trim().split("/").pop()}` });
+    set({ toast: `Moved to ${dest.split("/").pop()}` });
   },
 
   async commit(message) {

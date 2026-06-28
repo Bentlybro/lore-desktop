@@ -11,3 +11,8 @@ export const stopWatch = () => invoke<void>("stop_watch");
 // Open a path in the OS file manager / a terminal / an external editor.
 export const openExternal = (action: "explorer" | "shell" | "editor", path: string) =>
   invoke<void>("open_external", { action, path });
+
+// Rename/move a file on disk within the repo (run before `stage move`, which
+// only records the rename and does not move the file itself).
+export const movePath = (cwd: string, from: string, to: string) =>
+  invoke<void>("move_path", { cwd, from, to });

@@ -114,6 +114,26 @@ fn remove_lore_dir(cwd: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Rename/move a file within the repo working tree (creating parent dirs as
+/// needed). Run before `lore stage move` so Lore records the rename — the CLI's
+/// `stage move` only records it, it does not move the file on disk.
+#[tauri::command]
+fn move_path(cwd: String, from: String, to: String) -> Result<(), String> {
+    let base = std::path::Path::new(&cwd);
+    let src = base.join(&from);
+    let dst = base.join(&to);
+    if !src.exists() {
+        return Err(format!("source not found: {from}"));
+    }
+    if dst.exists() {
+        return Err(format!("destination already exists: {to}"));
+    }
+    if let Some(parent) = dst.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    std::fs::rename(&src, &dst).map_err(|e| e.to_string())
+}
+
 /// Open a path in the OS file manager / a terminal / an external editor.
 /// `action`: "explorer" | "shell" | "editor".
 #[tauri::command]
@@ -215,6 +235,7 @@ pub fn run() {
             make_loreignore,
             repo_remote_url,
             remove_lore_dir,
+            move_path,
             open_external,
             lore::run_lore,
             lore::run_lore_stream,

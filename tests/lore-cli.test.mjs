@@ -18,7 +18,7 @@
 import { test, before } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, writeFileSync, appendFileSync, rmSync } from "node:fs";
+import { mkdirSync, writeFileSync, appendFileSync, rmSync, existsSync, renameSync } from "node:fs";
 import { join } from "node:path";
 import { homedir, tmpdir } from "node:os";
 
@@ -185,4 +185,147 @@ test("first-complete rule: history is OK despite a trailing relay error", () => 
   // On a no-auth server `revision history` emits a benign second `complete`
   // with an error; the adapter must still report the command as successful.
   assert.ok(o.ok, "history must be OK even with a trailing relay 'complete'");
+});
+
+// ----------------------------------------------------------------------------
+// Tier 1–3 verb coverage — these drive the new commands the desktop app issues,
+// verifying the exact flags against the real binary (what the mocked unit tests
+// can't catch).
+// ----------------------------------------------------------------------------
+
+/** Newest revision in the current branch's history. */
+function tip() {
+  const revs = parseHistory(runLore(["revision", "history"]));
+  return revs.reduce((m, r) => (r.revisionNumber > m.revisionNumber ? r : m));
+}
+
+test("reset discards a tracked-file edit", () => {
+  appendFileSync(join(repoDir, "a.txt"), "temp edit\n");
+  assert.ok(
+    dataOf(runLore(["status", "--scan"]), "repositoryStatusFile").some((f) => f.path === "a.txt"),
+    "precondition: a.txt should be dirty",
+  );
+  assert.ok(runLore(["reset", "a.txt"]).ok, "reset failed");
+  const dirty = dataOf(runLore(["status", "--scan"]), "repositoryStatusFile").some((f) => f.path === "a.txt");
+  assert.ok(!dirty, "a.txt should be clean after reset");
+});
+
+test("reset --purge removes a new untracked file", () => {
+  writeFileSync(join(repoDir, "scratch.txt"), "scratch\n");
+  assert.ok(
+    dataOf(runLore(["status", "--scan"]), "repositoryStatusFile").some((f) => f.path === "scratch.txt"),
+    "precondition: scratch.txt should be a new add",
+  );
+  assert.ok(runLore(["reset", "--purge", "scratch.txt"]).ok, "reset --purge failed");
+  assert.ok(!existsSync(join(repoDir, "scratch.txt")), "scratch.txt should be purged from disk");
+});
+
+test("file history lists revisions that touched a file", () => {
+  const o = runLore(["file", "history", "a.txt"]);
+  assert.ok(o.ok, o.error);
+  assert.ok(dataOf(o, "fileHistory").length >= 1, "a.txt should have file history entries");
+});
+
+test("lock acquire / query / release roundtrip", () => {
+  const acq = runLore(["lock", "acquire", "a.txt"]);
+  assert.ok(acq.ok, `lock acquire failed: ${acq.error}`);
+  const locked = dataOf(runLore(["lock", "query"]), "lockFileQuery").map((d) => d.path);
+  assert.ok(locked.includes("a.txt"), "a.txt should be reported as locked");
+  assert.ok(runLore(["lock", "release", "a.txt"]).ok, "lock release failed");
+});
+
+test("revision amend rewrites the tip message", () => {
+  appendFileSync(join(repoDir, "a.txt"), "amend change\n");
+  assert.ok(runLore(["stage", "a.txt"]).ok);
+  assert.ok(runLore(["revision", "amend", "amended message"]).ok, "amend failed");
+  assert.equal(tip().message, "amended message", "tip message should be the amended one");
+});
+
+test("stage move records a rename", () => {
+  // `stage move` only records the rename — the file must already be moved on
+  // disk (this is exactly what the app's move_path does before stage move).
+  renameSync(join(repoDir, "b.txt"), join(repoDir, "b2.txt"));
+  const o = runLore(["stage", "move", "b.txt", "b2.txt"]);
+  assert.ok(o.ok, `stage move failed: ${o.error}`);
+  const files = dataOf(runLore(["status"]), "repositoryStatusFile");
+  assert.ok(
+    files.some((f) => f.path === "b2.txt" || f.fromPath === "b.txt" || f.action === "move"),
+    "status should reflect the move to b2.txt",
+  );
+  runLore(["stage", "."]);
+  assert.ok(runLore(["commit", "rename b -> b2"]).ok, "commit of rename failed");
+});
+
+test("branch merge brings in another branch's changes (clean)", () => {
+  assert.ok(runLore(["branch", "create", "merge-src"]).ok);
+  assert.ok(runLore(["branch", "switch", "merge-src"]).ok);
+  writeFileSync(join(repoDir, "merged.txt"), "from merge-src\n");
+  runLore(["status", "--scan"]); // set dirty flags so `stage .` picks the file up
+  assert.ok(runLore(["stage", "."]).ok);
+  assert.ok(runLore(["commit", "add merged.txt"]).ok, "commit on merge-src failed");
+  assert.ok(runLore(["branch", "switch", "main"]).ok);
+  const o = runLore(["branch", "merge", "merge-src"]);
+  assert.ok(o.ok, `merge failed: ${o.error}`);
+  assert.ok(existsSync(join(repoDir, "merged.txt")), "merged.txt should be present on main after merge");
+});
+
+test("revision cherry-pick applies a commit onto the current branch", () => {
+  assert.ok(runLore(["branch", "create", "pick-src"]).ok);
+  assert.ok(runLore(["branch", "switch", "pick-src"]).ok);
+  writeFileSync(join(repoDir, "pick.txt"), "cherry\n");
+  runLore(["status", "--scan"]);
+  assert.ok(runLore(["stage", "."]).ok);
+  assert.ok(runLore(["commit", "add pick.txt"]).ok, "commit on pick-src failed");
+  const pickRev = tip().revision;
+  assert.ok(runLore(["branch", "switch", "main"]).ok);
+  const o = runLore(["revision", "cherry-pick", pickRev]);
+  assert.ok(o.ok, `cherry-pick failed: ${o.error}`);
+  assert.ok(existsSync(join(repoDir, "pick.txt")), "pick.txt should exist after cherry-pick");
+});
+
+test("revision revert creates a commit undoing a change", () => {
+  writeFileSync(join(repoDir, "revertme.txt"), "remove me\n");
+  runLore(["status", "--scan"]);
+  assert.ok(runLore(["stage", "."]).ok);
+  assert.ok(runLore(["commit", "add revertme"]).ok, "commit of revertme failed");
+  const addRev = tip().revision;
+  const before = parseHistory(runLore(["revision", "history"])).length;
+  const o = runLore(["revision", "revert", addRev]);
+  assert.ok(o.ok, `revert failed: ${o.error}`);
+  const after = parseHistory(runLore(["revision", "history"])).length;
+  assert.ok(after > before, "revert should add a new revision");
+  assert.ok(!existsSync(join(repoDir, "revertme.txt")), "revertme.txt should be gone after revert");
+});
+
+test("branch protect / unprotect (on a pushed branch)", () => {
+  // protect/unprotect are remote operations — the branch must exist on the
+  // server. A local-only branch errors "Failed to protect branch on remote:
+  // Not found", so we use main (pushed by the earlier push test).
+  const p = runLore(["branch", "protect", "main"]);
+  assert.ok(p.ok, `protect failed: ${p.error}`);
+  const u = runLore(["branch", "unprotect", "main"]);
+  assert.ok(u.ok, `unprotect failed: ${u.error}`);
+});
+
+test("branch archive removes a branch from the active list", () => {
+  assert.ok(runLore(["branch", "archive", "feature-x"]).ok, "archive failed");
+  const active = dataOf(runLore(["branch", "list"]), "branchListEntry")
+    .filter((b) => !b.archived)
+    .map((b) => b.name);
+  assert.ok(!active.includes("feature-x"), "feature-x should no longer be active");
+});
+
+test("repository info / verify state / gc", () => {
+  assert.ok(firstOf(runLore(["repository", "info"]), "repositoryData"), "repository info missing data");
+  assert.ok(runLore(["repository", "verify", "state"]).ok, "verify state failed");
+  assert.ok(runLore(["repository", "gc"]).ok, "gc failed");
+});
+
+test("repository metadata set / get", () => {
+  assert.ok(runLore(["repository", "metadata", "set", "desktop-test", "yes"]).ok, "metadata set failed");
+  const md = dataOf(runLore(["repository", "metadata", "get"]), "metadata");
+  assert.ok(
+    md.some((d) => d.key === "desktop-test"),
+    "desktop-test metadata key should be present after set",
+  );
 });
