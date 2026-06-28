@@ -1,3 +1,4 @@
+import { Check, TriangleAlert } from "lucide-react";
 import { useStore } from "../store";
 
 export function ProgressOverlay() {
@@ -11,16 +12,16 @@ export function ProgressOverlay() {
       <div className="progress-box">
         <div className="progress-title">
           <span className="spinner" /> {progress.title}
-          {determinate ? <span className="progress-pct">{pct}%</span> : null}
+          {determinate && <span className="progress-pct">{pct}%</span>}
         </div>
         <div className="progress-body">
           <div className="bar">
             <div
               className={`bar-fill ${determinate ? "" : "indeterminate"}`}
-              style={{ width: determinate ? `${pct}%` : "100%" }}
+              style={{ width: determinate ? `${pct}%` : "35%" }}
             />
           </div>
-          <div className="progress-detail">{progress.detail || "working…"}</div>
+          <div className="progress-detail">{progress.detail || "Working…"}</div>
         </div>
       </div>
     </div>
@@ -35,8 +36,8 @@ export function Toast() {
       className={`toast ${error ? "toast-error" : ""}`}
       onClick={() => (error ? setError(null) : setToast(null))}
     >
-      {error ?? toast}
-      <span className="toast-x">×</span>
+      {error ? <TriangleAlert size={16} /> : <Check size={16} />}
+      <span className="toast-msg">{error ?? toast}</span>
     </div>
   );
 }

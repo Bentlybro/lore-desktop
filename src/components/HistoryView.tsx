@@ -3,12 +3,12 @@ import { useStore } from "../store";
 function when(ts?: number): string {
   if (!ts) return "";
   const d = new Date(ts);
-  return isNaN(d.getTime()) ? "" : d.toLocaleString();
+  return isNaN(d.getTime()) ? "" : d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }
 
 export function HistoryView() {
   const { history, selectedRevision, selectRevision } = useStore();
-  if (!history.length) return <div className="placeholder">No history yet.</div>;
+  if (!history.length) return <div className="placeholder">No history yet</div>;
   return (
     <div className="list">
       {history.map((r) => (
@@ -22,9 +22,9 @@ export function HistoryView() {
             <span className="history-msg">{r.message ?? "(no message)"}</span>
           </div>
           <div className="history-sub">
-            <span className="mono">{r.revision.slice(0, 12)}</span>
-            {r.creator ? <span> · {r.creator}</span> : null}
-            {r.timestamp ? <span> · {when(r.timestamp)}</span> : null}
+            <span className="hash">{r.revision.slice(0, 10)}</span>
+            {r.creator ? <span>· {r.creator}</span> : null}
+            {r.timestamp ? <span>· {when(r.timestamp)}</span> : null}
           </div>
         </div>
       ))}

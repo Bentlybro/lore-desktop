@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { X } from "lucide-react";
 import { useStore } from "../store";
 
 type Mode = "open" | "clone" | "create";
@@ -22,10 +23,12 @@ export function AddRepoModal({ onClose }: { onClose: () => void }) {
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <span>Add repository</span>
-          <button onClick={onClose}>×</button>
+          <button className="btn-ghost" onClick={onClose}>
+            <X size={16} />
+          </button>
         </div>
         <div className="modal-body">
-          <div className="modal-tabs">
+          <div className="seg">
             <button className={mode === "open" ? "on" : ""} onClick={() => setMode("open")}>
               Open
             </button>
@@ -50,7 +53,9 @@ export function AddRepoModal({ onClose }: { onClose: () => void }) {
               <div className="field">
                 <span className="label">Repository name</span>
                 <input value={repo} onChange={(e) => setRepo(e.target.value)} placeholder="my-project" />
-                <span className="hint">{settings?.serverUrl}/{repo || "<name>"}</span>
+                <span className="hint">
+                  {settings?.serverUrl}/{repo || "<name>"}
+                </span>
               </div>
               <div className="field">
                 <span className="label">{mode === "clone" ? "Destination folder" : "New folder"}</span>
@@ -61,8 +66,10 @@ export function AddRepoModal({ onClose }: { onClose: () => void }) {
           )}
 
           <div className="modal-foot">
-            <button onClick={onClose}>Cancel</button>
-            <button onClick={submit} disabled={busy}>
+            <button className="btn" onClick={onClose}>
+              Cancel
+            </button>
+            <button className="btn btn-primary" onClick={submit} disabled={busy} style={{ textTransform: "capitalize" }}>
               {mode}
             </button>
           </div>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { X } from "lucide-react";
 import { useStore } from "../store";
 import type { Settings } from "../types";
 
@@ -8,16 +9,16 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
     settings ?? { serverUrl: "", identity: "", lorePath: "", repos: [] },
   );
 
-  function field(key: keyof Settings, value: string) {
-    setDraft({ ...draft, [key]: value });
-  }
+  const field = (key: keyof Settings, value: string) => setDraft({ ...draft, [key]: value });
 
   return (
     <div className="overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <span>Settings</span>
-          <button onClick={onClose}>×</button>
+          <button className="btn-ghost" onClick={onClose}>
+            <X size={16} />
+          </button>
         </div>
         <div className="modal-body">
           <div className="field">
@@ -38,8 +39,11 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
             <span className="hint">Leave empty to auto-resolve (~/bin/lore or PATH).</span>
           </div>
           <div className="modal-foot">
-            <button onClick={onClose}>Cancel</button>
+            <button className="btn" onClick={onClose}>
+              Cancel
+            </button>
             <button
+              className="btn btn-primary"
               onClick={async () => {
                 await saveSettings(draft);
                 onClose();

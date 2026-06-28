@@ -1,31 +1,33 @@
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
+import {
+  RefreshCw,
+  ArrowDownToLine,
+  ArrowUpToLine,
+  GitBranch,
+  History,
+  GitCompare,
+  Folder,
+  ChevronDown,
+  Settings,
+} from "lucide-react";
 import "./App.css";
 import { useStore } from "./store";
-import { Sidebar } from "./components/Sidebar";
 import { ChangesView } from "./components/ChangesView";
 import { HistoryView } from "./components/HistoryView";
-import { BranchesView } from "./components/BranchesView";
 import { DiffView } from "./components/DiffView";
 import { CommitDetail } from "./components/CommitDetail";
+import { RepoMenu } from "./components/RepoMenu";
+import { BranchMenu } from "./components/BranchMenu";
 import { AddRepoModal } from "./components/AddRepoModal";
 import { SettingsModal } from "./components/SettingsModal";
 import { ProgressOverlay, Toast } from "./components/ProgressOverlay";
 import { WindowControls } from "./components/WindowControls";
 
 function App() {
-  const {
-    init,
-    current,
-    tab,
-    setTab,
-    revision,
-    push,
-    sync,
-    refresh,
-    busy,
-    settings,
-  } = useStore();
+  const { init, current, tab, setTab, revision, push, sync, refresh, busy, settings, files } = useStore();
+  const [repoMenu, setRepoMenu] = useState(false);
+  const [branchMenu, setBranchMenu] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -33,8 +35,6 @@ function App() {
     init();
   }, [init]);
 
-  // Live change detection: the Rust watcher emits "repo-changed" with the
-  // changed paths; the store marks them dirty and refreshes cheaply.
   useEffect(() => {
     const unlisten = listen<string[]>("repo-changed", (e) => {
       useStore.getState().onRepoChanged(e.payload);
@@ -44,83 +44,134 @@ function App() {
     };
   }, []);
 
-  const ahead = revision?.isLocalAhead ? "AHEAD" : revision?.isRemoteAhead ? "BEHIND" : "IN SYNC";
+  const syncCls = revision?.isLocalAhead ? "ahead" : revision?.isRemoteAhead ? "behind" : "";
+  const syncText = revision?.isLocalAhead ? "Ahead" : revision?.isRemoteAhead ? "Behind" : "In sync";
+  const aheadN = revision?.isLocalAhead
+    ? Math.max(0, (revision.revisionLocalNumber ?? 0) - (revision.revisionRemoteNumber ?? 0))
+    : 0;
+  const behindN = revision?.isRemoteAhead
+    ? Math.max(0, (revision.revisionRemoteNumber ?? 0) - (revision.revisionLocalNumber ?? 0))
+    : 0;
 
   return (
-    <div className="app iso-bg">
+    <div className="app">
       <header className="topbar" data-tauri-drag-region="">
-        <div className="wordmark" data-tauri-drag-region="">
-          LORE<span className="v">DESKTOP</span>
+        <span className="logo" data-tauri-drag-region="">
+          ◇
+        </span>
+
+        <div className="dd">
+          <button
+            className="dd-trigger"
+            onClick={() => {
+              setRepoMenu((o) => !o);
+              setBranchMenu(false);
+            }}
+          >
+            <Folder />
+            <span className="dd-label">{current?.name ?? "Select a repository"}</span>
+            <ChevronDown className="chev" />
+          </button>
+          {repoMenu && (
+            <RepoMenu
+              onClose={() => setRepoMenu(false)}
+              onAdd={() => setAddOpen(true)}
+              onSettings={() => setSettingsOpen(true)}
+            />
+          )}
         </div>
+
         {current && (
-          <div className="repo-meta" data-tauri-drag-region="">
-            <span>{current.name}</span>
-            <span className="sep">/</span>
-            <span className="branch">{revision?.branchName ?? "—"}</span>
-            <span className="ahead">{ahead}</span>
+          <div className="dd">
+            <button
+              className="dd-trigger"
+              onClick={() => {
+                const next = !branchMenu;
+                setBranchMenu(next);
+                setRepoMenu(false);
+                if (next) useStore.getState().switchBranchRefresh();
+              }}
+            >
+              <GitBranch />
+              <span className="dd-label">{revision?.branchName ?? "—"}</span>
+              <ChevronDown className="chev" />
+            </button>
+            {branchMenu && <BranchMenu onClose={() => setBranchMenu(false)} />}
           </div>
         )}
+
+        {current && <span className={`sync-state ${syncCls}`}>{syncText}</span>}
+
         <div className="spacer" data-tauri-drag-region="" />
+
         <div className="actions">
           {current && (
             <>
-              <button onClick={() => refresh()} disabled={busy}>
-                Refresh
+              <button className="btn-ghost" title="Refresh" onClick={() => refresh()} disabled={busy}>
+                <RefreshCw className="btn-icon-svg" />
               </button>
-              <button onClick={sync} disabled={busy}>
-                Sync ↓
+              <button className="btn" onClick={sync} disabled={busy}>
+                <ArrowDownToLine className="btn-icon-svg" /> Sync
               </button>
-              <button onClick={push} disabled={busy}>
-                Push ↑
+              <button className="btn btn-primary" onClick={push} disabled={busy}>
+                <ArrowUpToLine className="btn-icon-svg" /> Push
               </button>
             </>
           )}
+          <button className="btn-ghost" title="Settings" onClick={() => setSettingsOpen(true)}>
+            <Settings className="btn-icon-svg" />
+          </button>
         </div>
         <WindowControls />
       </header>
 
       <div className="body">
-        <Sidebar onAdd={() => setAddOpen(true)} onSettings={() => setSettingsOpen(true)} />
-
         {!current ? (
-          <div className="empty-state iso-bg">
+          <div className="empty-state">
             <div className="mark">◇</div>
-            <p>Select or add a repository</p>
-            <button onClick={() => setAddOpen(true)}>+ Add repository</button>
+            <h2>No repository selected</h2>
+            <p>Open the repository menu to pick one, or add a working tree to get started.</p>
+            <button className="btn btn-primary" onClick={() => setRepoMenu(true)}>
+              <Folder className="btn-icon-svg" /> Open repositories
+            </button>
           </div>
         ) : (
           <>
             <div className="panel">
               <div className="tabs">
                 <button className={`tab ${tab === "changes" ? "active" : ""}`} onClick={() => setTab("changes")}>
-                  Changes
+                  <GitCompare className="btn-icon-svg" /> Changes
                 </button>
                 <button className={`tab ${tab === "history" ? "active" : ""}`} onClick={() => setTab("history")}>
-                  History
-                </button>
-                <button className={`tab ${tab === "branches" ? "active" : ""}`} onClick={() => setTab("branches")}>
-                  Branches
+                  <History className="btn-icon-svg" /> History
                 </button>
               </div>
               <div className="tabpanel">
                 {tab === "changes" && <ChangesView />}
                 {tab === "history" && <HistoryView />}
-                {tab === "branches" && <BranchesView />}
               </div>
             </div>
 
-            <div className="panel">
-              {tab === "history" ? <CommitDetail /> : <DiffView />}
-            </div>
+            <div className="panel">{tab === "history" ? <CommitDetail /> : <DiffView />}</div>
           </>
         )}
       </div>
 
       <footer className="statusbar">
-        {busy && <span className="spinner" style={{ width: 8, height: 8 }} />}
-        <span>{busy ? "WORKING" : "READY"}</span>
-        <span>· {settings?.serverUrl}</span>
-        <span>· {settings?.identity}</span>
+        <span className="st">
+          {busy && <span className="spinner" style={{ width: 10, height: 10 }} />}
+          {busy ? "Working…" : "Ready"}
+        </span>
+        {current && (
+          <span className="st mono">
+            {files.length} change{files.length === 1 ? "" : "s"}
+          </span>
+        )}
+        {current && aheadN > 0 && <span className="st mono">↑{aheadN}</span>}
+        {current && behindN > 0 && <span className="st mono">↓{behindN}</span>}
+        <span style={{ flex: 1 }} />
+        <span className="st mono">{settings?.serverUrl}</span>
+        <span className="st mono">{settings?.identity}</span>
       </footer>
 
       {addOpen && <AddRepoModal onClose={() => setAddOpen(false)} />}
