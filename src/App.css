@@ -1230,6 +1230,21 @@ button:active:not(:disabled) {
   color: var(--text-3);
   line-height: 1.6;
 }
+.maint-row {
+  display: flex;
+  gap: 8px;
+}
+.maint-info {
+  margin-top: 4px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 11px;
+  color: var(--text-2);
+  line-height: 1.7;
+  word-break: break-all;
+}
 .hint b {
   color: var(--text-2);
   font-weight: 500;
