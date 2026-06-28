@@ -1,36 +1,6 @@
 import { FileText } from "lucide-react";
 import { useStore } from "../store";
-
-type Row = { kind: "hunk" | "add" | "del" | "ctx"; oldLn?: number; newLn?: number; text: string };
-
-function parseDiff(text: string): Row[] {
-  const rows: Row[] = [];
-  let oldLn = 0;
-  let newLn = 0;
-  for (const raw of text.split("\n")) {
-    if (raw.startsWith("@@")) {
-      const m = raw.match(/@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
-      if (m) {
-        oldLn = parseInt(m[1], 10);
-        newLn = parseInt(m[2], 10);
-      }
-      rows.push({ kind: "hunk", text: raw });
-    } else if (raw.startsWith("+++") || raw.startsWith("---")) {
-      continue; // file headers — we show our own
-    } else if (raw.startsWith("+")) {
-      rows.push({ kind: "add", newLn, text: raw.slice(1) });
-      newLn++;
-    } else if (raw.startsWith("-")) {
-      rows.push({ kind: "del", oldLn, text: raw.slice(1) });
-      oldLn++;
-    } else {
-      rows.push({ kind: "ctx", oldLn, newLn, text: raw.startsWith(" ") ? raw.slice(1) : raw });
-      oldLn++;
-      newLn++;
-    }
-  }
-  return rows;
-}
+import { parseDiff, looksLikeDiff } from "../lib/diff-parse";
 
 export function DiffBody({ text, loading }: { text: string; loading?: boolean }) {
   if (loading) {
@@ -44,8 +14,7 @@ export function DiffBody({ text, loading }: { text: string; loading?: boolean })
       </pre>
     );
   }
-  const looksLikeDiff = text.includes("@@") || /^[+-]/m.test(text);
-  if (!text || !looksLikeDiff) {
+  if (!text || !looksLikeDiff(text)) {
     return (
       <pre className="diff-body">
         <div className="dl">
