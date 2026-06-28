@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Pencil, RotateCcw, GitBranchPlus, Copy } from "lucide-react";
+import { Pencil, RotateCcw, GitBranchPlus, Copy, Undo2 } from "lucide-react";
 import { useStore } from "../store";
 import { formatDate } from "../lib/format";
 import type { Revision } from "../types";
@@ -13,6 +13,7 @@ export function HistoryView() {
     selectRevision,
     revertRevision,
     cherryPickRevision,
+    resetBranchTo,
     setAmendMode,
     setTab,
     askConfirm,
@@ -118,6 +119,22 @@ export function HistoryView() {
               }}
             >
               <GitBranchPlus /> Cherry-pick commit…
+            </button>
+            <button
+              className="ctx-item ctx-danger"
+              onClick={() => {
+                const rev = menu.rev;
+                askConfirm({
+                  title: `Reset branch to #${rev.revisionNumber}?`,
+                  message: `The current branch tip moves to "${rev.message ?? rev.revision.slice(0, 10)}". Commits after it are removed from this branch.`,
+                  confirmLabel: "Reset",
+                  danger: true,
+                  onConfirm: () => resetBranchTo(rev),
+                });
+                setMenu(null);
+              }}
+            >
+              <Undo2 /> Reset branch to here
             </button>
             <div className="ctx-sep" />
             <button

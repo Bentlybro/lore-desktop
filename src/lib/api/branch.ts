@@ -32,3 +32,18 @@ export const mergeAbort = (cwd: string) =>
 /** Resolve conflicts using "mine" (current branch) or "theirs" (merged branch). */
 export const mergeResolve = (cwd: string, side: "mine" | "theirs", paths: string[] = []) =>
   runLore(["branch", "merge", "resolve", side, ...paths], cwd).then(ensureOk);
+
+// ---- Branch management ----
+
+/** Archive a branch (Lore's equivalent of deleting a branch). */
+export const branchArchive = (cwd: string, branch: string) =>
+  runLore(["branch", "archive", branch], cwd).then(ensureOk);
+
+export const branchProtect = (cwd: string, branch: string) =>
+  runLore(["branch", "protect", branch], cwd).then(ensureOk);
+export const branchUnprotect = (cwd: string, branch: string) =>
+  runLore(["branch", "unprotect", branch], cwd).then(ensureOk);
+
+/** Reset the current branch's tip to the given revision. */
+export const branchReset = (cwd: string, revision: string) =>
+  runLore(["branch", "reset", revision], cwd).then(ensureOk);

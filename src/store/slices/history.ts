@@ -79,6 +79,16 @@ export const createHistorySlice = (set: StoreSet, get: StoreGet): HistorySlice =
     else set({ conflictOp: null, toast: `Cherry-picked #${rev.revisionNumber}` });
   },
 
+  async resetBranchTo(rev) {
+    const { current } = get();
+    if (!current) return;
+    await guard(set, () => lore.branchReset(current.path, rev.revision));
+    await get().refresh(true);
+    await get().loadHistory();
+    await get().switchBranchRefresh();
+    set({ toast: `Branch reset to #${rev.revisionNumber}` });
+  },
+
   async selectCommitFile(path) {
     const { current, selectedRevision } = get();
     if (!current || !selectedRevision) return;

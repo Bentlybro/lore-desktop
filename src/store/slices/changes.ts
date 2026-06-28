@@ -11,9 +11,39 @@ export const createChangesSlice = (set: StoreSet, get: StoreGet): ChangesSlice =
   diffLoading: false,
   conflictOp: null,
   amendMode: false,
+  locks: {},
 
   setAmendMode(b) {
     set({ amendMode: b });
+  },
+
+  async loadLocks() {
+    const { current } = get();
+    if (!current) return;
+    try {
+      const list = await lore.lockQuery(current.path);
+      const map: Record<string, import("../../lib/api/lock").LockEntry> = {};
+      for (const l of list) map[l.path] = l;
+      set({ locks: map });
+    } catch {
+      // Locks require the server; ignore when it's unavailable.
+    }
+  },
+
+  async lockFile(path) {
+    const { current } = get();
+    if (!current) return;
+    await guard(set, () => lore.lockAcquire(current.path, [path]));
+    await get().loadLocks();
+    set({ toast: `Locked ${path.split("/").pop()}` });
+  },
+
+  async unlockFile(path) {
+    const { current } = get();
+    if (!current) return;
+    await guard(set, () => lore.lockRelease(current.path, [path]));
+    await get().loadLocks();
+    set({ toast: `Unlocked ${path.split("/").pop()}` });
   },
 
   async refresh(scan = true) {

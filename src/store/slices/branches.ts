@@ -38,6 +38,24 @@ export const createBranchSlice = (set: StoreSet, get: StoreGet): BranchSlice => 
     set({ toast: `Created branch ${name}` });
   },
 
+  async archiveBranch(name) {
+    const { current } = get();
+    if (!current) return;
+    await guard(set, () => lore.branchArchive(current.path, name));
+    await get().switchBranchRefresh();
+    set({ toast: `Archived ${name}` });
+  },
+
+  async protectBranch(name, protect) {
+    const { current } = get();
+    if (!current) return;
+    await guard(set, () =>
+      protect ? lore.branchProtect(current.path, name) : lore.branchUnprotect(current.path, name),
+    );
+    await get().switchBranchRefresh();
+    set({ toast: `${protect ? "Protected" : "Unprotected"} ${name}` });
+  },
+
   async mergeBranch(name) {
     const { current } = get();
     if (!current) return;

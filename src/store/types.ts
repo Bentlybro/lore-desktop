@@ -2,6 +2,7 @@
 // so each slice file stays focused while get()/set() see the whole store.
 import type { StoreApi } from "zustand";
 import type { Branch, FileRow, Revision, RepoEntry, Settings, StatusRevision } from "../types";
+import type { LockEntry } from "../lib/api/lock";
 
 export type Tab = "changes" | "history" | "branches";
 export type CommitFileRow = { path: string; action: string };
@@ -41,6 +42,10 @@ export interface ChangesSlice {
   conflictOp: ConflictOp | null;
   amendMode: boolean;
   setAmendMode: (b: boolean) => void;
+  locks: Record<string, LockEntry>;
+  loadLocks: () => Promise<void>;
+  lockFile: (path: string) => Promise<void>;
+  unlockFile: (path: string) => Promise<void>;
   refresh: (scan?: boolean) => Promise<void>;
   onRepoChanged: (paths: string[]) => Promise<void>;
   selectFile: (path: string) => Promise<void>;
@@ -66,6 +71,8 @@ export interface BranchSlice {
   abortConflict: () => Promise<void>;
   resolveConflict: (path: string, side: "mine" | "theirs") => Promise<void>;
   resolveAllConflicts: (side: "mine" | "theirs") => Promise<void>;
+  archiveBranch: (name: string) => Promise<void>;
+  protectBranch: (name: string, protect: boolean) => Promise<void>;
 }
 
 export interface HistorySlice {
@@ -78,6 +85,7 @@ export interface HistorySlice {
   selectCommitFile: (path: string) => Promise<void>;
   revertRevision: (rev: Revision) => Promise<void>;
   cherryPickRevision: (rev: Revision) => Promise<void>;
+  resetBranchTo: (rev: Revision) => Promise<void>;
 }
 
 export interface ConfirmState {

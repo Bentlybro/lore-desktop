@@ -7,6 +7,7 @@ export * from "./api/settings";
 export * from "./api/status";
 export * from "./api/staging";
 export * from "./api/reset";
+export * from "./api/lock";
 export * from "./api/commit";
 export * from "./api/branch";
 export * from "./api/history";

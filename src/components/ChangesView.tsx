@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { EyeOff, Copy, CheckCheck, FileCog, RotateCcw, FileClock, TriangleAlert, Check, PenLine } from "lucide-react";
+import { EyeOff, Copy, CheckCheck, FileCog, RotateCcw, FileClock, TriangleAlert, Check, PenLine, Lock, LockOpen } from "lucide-react";
 import { useStore } from "../store";
 import type { FileRow } from "../types";
 import { actionBadge } from "../lib/badges";
@@ -31,6 +31,9 @@ export function ChangesView() {
     conflictOp,
     amendMode,
     setAmendMode,
+    locks,
+    lockFile,
+    unlockFile,
     busy,
   } = useStore();
   const [message, setMessage] = useState("");
@@ -168,6 +171,7 @@ export function ChangesView() {
                     <span className="fp-dir">{sp.dir}</span>
                     <span className="fp-name">{sp.name}</span>
                   </span>
+                  {locks[f.p] && <Lock size={12} className="row-lock" />}
                 </div>
               );
             })}
@@ -270,6 +274,16 @@ export function ChangesView() {
             >
               <RotateCcw /> Discard changes
             </button>
+            <div className="ctx-sep" />
+            {locks[menu.file.p] ? (
+              <button className="ctx-item" onClick={() => { unlockFile(menu.file.p); setMenu(null); }}>
+                <LockOpen /> Release lock{locks[menu.file.p].owner ? ` (${locks[menu.file.p].owner})` : ""}
+              </button>
+            ) : (
+              <button className="ctx-item" onClick={() => { lockFile(menu.file.p); setMenu(null); }}>
+                <Lock /> Lock for editing
+              </button>
+            )}
             <div className="ctx-sep" />
             <button className="ctx-item" onClick={() => { openRename(menu.file.p); setMenu(null); }}>
               <PenLine /> Move / rename…

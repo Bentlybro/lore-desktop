@@ -39,6 +39,7 @@ export const createReposSlice = (set: StoreSet, get: StoreGet): ReposSlice => ({
       selectedRevision: null,
       commitFiles: [],
       commitFileSelected: null,
+      locks: {},
     });
     if (r) {
       // Warm mode: keep this repo's state hot for faster repeated scans/commits.
@@ -46,6 +47,7 @@ export const createReposSlice = (set: StoreSet, get: StoreGet): ReposSlice => ({
       // Live change detection (GitHub-Desktop style).
       lore.startWatch(r.path).catch(() => {});
       await get().refresh();
+      get().loadLocks();
     } else {
       lore.stopWatch().catch(() => {});
     }

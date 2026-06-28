@@ -706,6 +706,12 @@ button:active:not(:disabled) {
   flex: none;
   color: var(--text);
 }
+.row-lock {
+  margin-left: auto;
+  flex: none;
+  color: var(--amber);
+  opacity: 0.85;
+}
 .commit-box {
   border-top: 1px solid var(--border);
   padding: 12px;
