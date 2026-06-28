@@ -1,10 +1,20 @@
-<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
-  <rect width="1024" height="1024" rx="184" fill="#070707"/>
-  <rect x="22" y="22" width="980" height="980" rx="164" fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="3"/>
-  <g fill="none" stroke="#ffffff" stroke-linejoin="round" stroke-linecap="round">
-    <!-- isometric cube outline -->
-    <path d="M512 246 L742 379 L742 645 L512 778 L282 645 L282 379 Z" stroke-width="18"/>
-    <!-- internal edges (the Y meeting at center) -->
-    <path d="M512 512 L742 379 M512 512 L282 379 M512 512 L512 778" stroke-width="16"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c2029"/>
+      <stop offset="1" stop-color="#0b0c10"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="url(#tile)"/>
+  <rect x="18" y="18" width="988" height="988" rx="206" fill="none" stroke="#7c8cff" stroke-opacity="0.16" stroke-width="4"/>
+  <polygon points="247,652 512,784 512,846 247,714" fill="#5a66d2"/>
+  <polygon points="777,652 512,784 512,846 777,714" fill="#49539f"/>
+  <polygon points="512,520 777,652 512,784 247,652" fill="#737fef"/>
+  <polygon points="247,500 512,632 512,694 247,562" fill="#5a66d2"/>
+  <polygon points="777,500 512,632 512,694 777,562" fill="#49539f"/>
+  <polygon points="512,368 777,500 512,632 247,500" fill="#818dff"/>
+  <polygon points="247,348 512,480 512,542 247,410" fill="#5a66d2"/>
+  <polygon points="777,348 512,480 512,542 777,410" fill="#49539f"/>
+  <polygon points="512,216 777,348 512,480 247,348" fill="#8f9aff"/>
+  <polygon points="512,216 657,288 512,360 367,288" fill="#a6afff"/>
 </svg>

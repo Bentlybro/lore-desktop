@@ -22,6 +22,7 @@ import { BranchMenu } from "./components/BranchMenu";
 import { AddRepoModal } from "./components/AddRepoModal";
 import { SettingsModal } from "./components/SettingsModal";
 import { ProgressOverlay, Toast } from "./components/ProgressOverlay";
+import { LoreMark } from "./components/LoreMark";
 import { ConfirmModal } from "./components/ConfirmModal";
 import { FileHistoryModal } from "./components/FileHistoryModal";
 import { RenameModal } from "./components/RenameModal";
@@ -73,7 +74,7 @@ function App() {
     <div className="app">
       <header className="topbar" data-tauri-drag-region="">
         <span className="logo" data-tauri-drag-region="">
-          ◇
+          <LoreMark size={20} />
         </span>
 
         <div className="dd">
@@ -144,7 +145,9 @@ function App() {
       <div className="body">
         {!current ? (
           <div className="empty-state">
-            <div className="mark">◇</div>
+            <div className="mark">
+              <LoreMark size={52} />
+            </div>
             <h2>No repository selected</h2>
             <p>Open the repository menu to pick one, or add a working tree to get started.</p>
             <button className="btn btn-primary" onClick={() => setRepoMenu(true)}>
