@@ -1085,7 +1085,7 @@ button:active:not(:disabled) {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 50;
+  z-index: 100;
   backdrop-filter: blur(2px);
 }
 .progress-box,
@@ -1297,11 +1297,11 @@ button:active:not(:disabled) {
 .ctx-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 70;
+  z-index: 90;
 }
 .ctx-menu {
   position: fixed;
-  z-index: 71;
+  z-index: 91;
   min-width: 214px;
   background: var(--surface-2);
   border: 1px solid var(--border-2);

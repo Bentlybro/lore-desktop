@@ -47,6 +47,18 @@ function App() {
     };
   }, []);
 
+  // Suppress the webview's native right-click menu everywhere except text
+  // fields (so our own context menus are the only ones that appear).
+  useEffect(() => {
+    const onCtx = (e: MouseEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      e.preventDefault();
+    };
+    document.addEventListener("contextmenu", onCtx);
+    return () => document.removeEventListener("contextmenu", onCtx);
+  }, []);
+
   const syncCls = revision?.isLocalAhead ? "ahead" : revision?.isRemoteAhead ? "behind" : "";
   const syncText = revision?.isLocalAhead ? "Ahead" : revision?.isRemoteAhead ? "Behind" : "In sync";
   const aheadN = revision?.isLocalAhead

@@ -56,33 +56,46 @@ export const createBranchSlice = (set: StoreSet, get: StoreGet): BranchSlice => 
     await get().refresh(true);
     await get().loadHistory();
     const conflicts = get().files.some((f) => f.c);
-    if (conflicts) set({ error: null, toast: `Merge of ${name} has conflicts — resolve each, then commit` });
+    if (conflicts) set({ error: null, conflictOp: "merge", toast: `Merge of ${name} has conflicts — resolve each, then commit` });
     else if (mergeErr) set({ error: mergeErr });
-    else set({ toast: `Merged ${name}` });
+    else set({ conflictOp: null, toast: `Merged ${name}` });
   },
 
-  async abortMerge() {
-    const { current } = get();
+  // Abort whichever conflicting operation is in progress (merge/revert/cherry-pick).
+  async abortConflict() {
+    const { current, conflictOp } = get();
     if (!current) return;
-    await guard(set, () => lore.mergeAbort(current.path));
+    const op = conflictOp ?? "merge";
+    const abort =
+      op === "revert" ? lore.revertAbort : op === "cherry-pick" ? lore.cherryPickAbort : lore.mergeAbort;
+    await guard(set, () => abort(current.path));
+    set({ conflictOp: null });
     await get().refresh(true);
     await get().loadHistory();
-    set({ toast: "Merge aborted" });
+    set({ toast: `${op === "merge" ? "Merge" : op === "revert" ? "Revert" : "Cherry-pick"} aborted` });
   },
 
   async resolveConflict(path, side) {
-    const { current } = get();
+    const { current, conflictOp } = get();
     if (!current) return;
-    await guard(set, () => lore.mergeResolve(current.path, side, [path]));
+    const op = conflictOp ?? "merge";
+    const resolve =
+      op === "revert" ? lore.revertResolve : op === "cherry-pick" ? lore.cherryPickResolve : lore.mergeResolve;
+    await guard(set, () => resolve(current.path, side, [path]));
     if (get().selectedPath === path) set({ selectedPath: null, diff: "" });
     await get().refresh(true);
+    if (!get().files.some((f) => f.c)) set({ conflictOp: null });
   },
 
   async resolveAllConflicts(side) {
-    const { current } = get();
+    const { current, conflictOp } = get();
     if (!current) return;
-    await guard(set, () => lore.mergeResolve(current.path, side));
+    const op = conflictOp ?? "merge";
+    const resolve =
+      op === "revert" ? lore.revertResolve : op === "cherry-pick" ? lore.cherryPickResolve : lore.mergeResolve;
+    await guard(set, () => resolve(current.path, side));
     await get().refresh(true);
+    if (!get().files.some((f) => f.c)) set({ conflictOp: null });
     set({ toast: `Resolved all conflicts using ${side === "mine" ? "my" : "their"} version` });
   },
 });

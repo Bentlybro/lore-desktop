@@ -25,13 +25,15 @@ export function ChangesView() {
     askConfirm,
     openFileHistory,
     openRename,
-    abortMerge,
+    abortConflict,
     resolveConflict,
     resolveAllConflicts,
+    conflictOp,
+    amendMode,
+    setAmendMode,
     busy,
   } = useStore();
   const [message, setMessage] = useState("");
-  const [amendMode, setAmendMode] = useState(false);
   const [menu, setMenu] = useState<Menu | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -55,6 +57,12 @@ export function ChangesView() {
     return () => window.removeEventListener("keydown", onKey);
   }, [menu]);
 
+  // Prefill the message when amend mode turns on (incl. from the History menu).
+  useEffect(() => {
+    if (amendMode && !message.trim()) setMessage(history[0]?.message ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [amendMode]);
+
   const ext = menu ? fileExt(menu.file.p) : "";
   const dir = menu ? fileDir(menu.file.p) : "";
   const isGitignore = menu ? menu.file.p.split("/").pop() === ".gitignore" : false;
@@ -65,7 +73,7 @@ export function ChangesView() {
         <div className="conflict-banner">
           <span className="cb-text">
             <TriangleAlert size={14} />
-            {conflictCount} conflict{conflictCount === 1 ? "" : "s"} — resolve, then commit
+            {conflictCount} {conflictOp ?? "merge"} conflict{conflictCount === 1 ? "" : "s"} — resolve, then commit
           </span>
           <span className="cb-actions">
             <button className="btn btn-sm" onClick={() => resolveAllConflicts("mine")} disabled={busy}>
@@ -79,11 +87,11 @@ export function ChangesView() {
               disabled={busy}
               onClick={() =>
                 askConfirm({
-                  title: "Abort merge?",
-                  message: "Discard the in-progress merge and restore the previous state.",
-                  confirmLabel: "Abort merge",
+                  title: "Abort?",
+                  message: "Discard the in-progress operation and restore the previous state.",
+                  confirmLabel: "Abort",
                   danger: true,
-                  onConfirm: abortMerge,
+                  onConfirm: abortConflict,
                 })
               }
             >

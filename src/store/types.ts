@@ -5,6 +5,7 @@ import type { Branch, FileRow, Revision, RepoEntry, Settings, StatusRevision } f
 
 export type Tab = "changes" | "history" | "branches";
 export type CommitFileRow = { path: string; action: string };
+export type ConflictOp = "merge" | "revert" | "cherry-pick";
 
 export interface ProgressState {
   active: boolean;
@@ -37,6 +38,9 @@ export interface ChangesSlice {
   selectedPath: string | null;
   diff: string;
   diffLoading: boolean;
+  conflictOp: ConflictOp | null;
+  amendMode: boolean;
+  setAmendMode: (b: boolean) => void;
   refresh: (scan?: boolean) => Promise<void>;
   onRepoChanged: (paths: string[]) => Promise<void>;
   selectFile: (path: string) => Promise<void>;
@@ -59,7 +63,7 @@ export interface BranchSlice {
   switchBranch: (name: string) => Promise<void>;
   createBranch: (name: string) => Promise<void>;
   mergeBranch: (name: string) => Promise<void>;
-  abortMerge: () => Promise<void>;
+  abortConflict: () => Promise<void>;
   resolveConflict: (path: string, side: "mine" | "theirs") => Promise<void>;
   resolveAllConflicts: (side: "mine" | "theirs") => Promise<void>;
 }
@@ -73,6 +77,7 @@ export interface HistorySlice {
   selectRevision: (r: Revision) => Promise<void>;
   selectCommitFile: (path: string) => Promise<void>;
   revertRevision: (rev: Revision) => Promise<void>;
+  cherryPickRevision: (rev: Revision) => Promise<void>;
 }
 
 export interface ConfirmState {

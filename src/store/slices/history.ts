@@ -39,10 +39,44 @@ export const createHistorySlice = (set: StoreSet, get: StoreGet): HistorySlice =
   async revertRevision(rev) {
     const { current } = get();
     if (!current) return;
-    const ok = await guard(set, () => lore.revert(current.path, rev.revision));
-    if (ok !== undefined) set({ toast: `Reverted #${rev.revisionNumber}` });
+    // Conflicts are expected (CLI may exit non-zero) — capture, surface below.
+    set({ busy: true, error: null });
+    let err: string | null = null;
+    try {
+      await lore.revert(current.path, rev.revision);
+    } catch (e: any) {
+      err = e?.message ?? String(e);
+    } finally {
+      set({ busy: false });
+    }
     await get().refresh(true);
     await get().loadHistory();
+    const conflicts = get().files.some((f) => f.c);
+    if (conflicts)
+      set({ error: null, conflictOp: "revert", toast: `Revert of #${rev.revisionNumber} has conflicts — resolve, then commit` });
+    else if (err) set({ error: err });
+    else set({ conflictOp: null, toast: `Reverted #${rev.revisionNumber}` });
+  },
+
+  async cherryPickRevision(rev) {
+    const { current } = get();
+    if (!current) return;
+    set({ busy: true, error: null });
+    let err: string | null = null;
+    try {
+      await lore.cherryPick(current.path, rev.revision);
+    } catch (e: any) {
+      err = e?.message ?? String(e);
+    } finally {
+      set({ busy: false });
+    }
+    await get().refresh(true);
+    await get().loadHistory();
+    const conflicts = get().files.some((f) => f.c);
+    if (conflicts)
+      set({ error: null, conflictOp: "cherry-pick", toast: `Cherry-pick of #${rev.revisionNumber} has conflicts — resolve, then commit` });
+    else if (err) set({ error: err });
+    else set({ conflictOp: null, toast: `Cherry-picked #${rev.revisionNumber}` });
   },
 
   async selectCommitFile(path) {

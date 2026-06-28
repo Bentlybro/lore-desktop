@@ -18,6 +18,8 @@ export const revert = (cwd: string, revision: string, opts: RevisionOpClass = {}
 };
 export const revertAbort = (cwd: string) =>
   runLore(["revision", "revert", "abort"], cwd).then(ensureOk);
+export const revertResolve = (cwd: string, side: "mine" | "theirs", paths: string[] = []) =>
+  runLore(["revision", "revert", "resolve", side, ...paths], cwd).then(ensureOk);
 
 /** Apply a single revision's changes onto the current branch. */
 export const cherryPick = (cwd: string, revision: string, opts: RevisionOpClass = {}) => {
@@ -28,6 +30,8 @@ export const cherryPick = (cwd: string, revision: string, opts: RevisionOpClass 
 };
 export const cherryPickAbort = (cwd: string) =>
   runLore(["revision", "cherry-pick", "abort"], cwd).then(ensureOk);
+export const cherryPickResolve = (cwd: string, side: "mine" | "theirs", paths: string[] = []) =>
+  runLore(["revision", "cherry-pick", "resolve", side, ...paths], cwd).then(ensureOk);
 
 /** Restore the working tree to the current revision (discard everything). */
 export const restore = (cwd: string, message?: string) =>

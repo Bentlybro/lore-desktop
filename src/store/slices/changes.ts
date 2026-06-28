@@ -9,6 +9,12 @@ export const createChangesSlice = (set: StoreSet, get: StoreGet): ChangesSlice =
   selectedPath: null,
   diff: "",
   diffLoading: false,
+  conflictOp: null,
+  amendMode: false,
+
+  setAmendMode(b) {
+    set({ amendMode: b });
+  },
 
   async refresh(scan = true) {
     const { current } = get();
@@ -187,7 +193,7 @@ export const createChangesSlice = (set: StoreSet, get: StoreGet): ChangesSlice =
       }),
     );
     set((st) => ({ progress: { ...st.progress, active: false } }));
-    if (ok !== undefined) set({ toast: "Committed" });
+    if (ok !== undefined) set({ toast: "Committed", conflictOp: null });
     await get().refresh(false);
     await get().loadHistory();
   },
@@ -198,7 +204,7 @@ export const createChangesSlice = (set: StoreSet, get: StoreGet): ChangesSlice =
     set({ progress: { active: true, title: "Amending…", detail: "Rewriting last commit…", frac: -1 } });
     const ok = await guard(set, () => lore.amend(current.path, message));
     set((st) => ({ progress: { ...st.progress, active: false } }));
-    if (ok !== undefined) set({ toast: "Amended last commit" });
+    if (ok !== undefined) set({ toast: "Amended last commit", amendMode: false });
     await get().refresh(false);
     await get().loadHistory();
   },
