@@ -15,14 +15,16 @@ export const createHistorySlice = (set: StoreSet, get: StoreGet): HistorySlice =
   async loadHistory() {
     const { current, historyLimit } = get();
     if (!current) return;
+    const ep = get().epoch;
     set({ busy: true });
     try {
       const revs = await lore.history(current.path, historyLimit);
+      if (get().epoch !== ep) return; // repo switched mid-load
       set({ history: revs, historyHasMore: revs.length >= historyLimit });
     } catch (e: any) {
-      set({ error: e?.message ?? String(e) });
+      if (get().epoch === ep) set({ error: e?.message ?? String(e) });
     } finally {
-      set({ busy: false });
+      if (get().epoch === ep) set({ busy: false });
     }
   },
 
@@ -34,6 +36,7 @@ export const createHistorySlice = (set: StoreSet, get: StoreGet): HistorySlice =
   async selectRevision(r) {
     const { current } = get();
     if (!current) return;
+    const ep = get().epoch;
     set({ selectedRevision: r, commitFiles: [], commitFileSelected: null, diff: "" });
     const parent = (r.parent && r.parent[0]) || "";
     if (!parent || /^0+$/.test(parent)) {
@@ -42,6 +45,7 @@ export const createHistorySlice = (set: StoreSet, get: StoreGet): HistorySlice =
     }
     await guard(set, async () => {
       const files = await lore.commitFiles(current.path, parent, r.revision);
+      if (get().epoch !== ep || get().selectedRevision?.revision !== r.revision) return; // superseded
       set({ commitFiles: files });
     });
   },
@@ -102,15 +106,19 @@ export const createHistorySlice = (set: StoreSet, get: StoreGet): HistorySlice =
   async selectCommitFile(path) {
     const { current, selectedRevision } = get();
     if (!current || !selectedRevision) return;
+    const ep = get().epoch;
+    const rev = selectedRevision.revision;
     const parent = (selectedRevision.parent && selectedRevision.parent[0]) || "";
     set({ commitFileSelected: path, diffLoading: true, diff: "" });
+    const stale = () =>
+      get().epoch !== ep || get().commitFileSelected !== path || get().selectedRevision?.revision !== rev;
     try {
-      const patch = await lore.revisionFileDiff(current.path, parent, selectedRevision.revision, path);
-      set({ diff: patch || "(no textual diff — binary or unchanged)" });
+      const patch = await lore.revisionFileDiff(current.path, parent, rev, path);
+      if (stale()) return; // superseded by another selection / repo switch
+      set({ diff: patch || "(no textual diff — binary or unchanged)", diffLoading: false });
     } catch (e: any) {
-      set({ diff: `(diff unavailable: ${e?.message ?? e})` });
-    } finally {
-      set({ diffLoading: false });
+      if (stale()) return;
+      set({ diff: `(diff unavailable: ${e?.message ?? e})`, diffLoading: false });
     }
   },
 });

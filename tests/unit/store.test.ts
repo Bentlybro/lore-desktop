@@ -15,6 +15,7 @@ vi.mock("../../src/lib/lore", () => {
     revertAbort: vi.fn(async () => ok),
     cherryPickAbort: vi.fn(async () => ok),
     history: vi.fn(async () => []),
+    fileDiff: vi.fn(async () => "diff"),
     lockQuery: vi.fn(async () => []),
     lockAcquire: vi.fn(async () => ok),
     lockRelease: vi.fn(async () => ok),
@@ -110,6 +111,37 @@ describe("amend", () => {
     await useStore.getState().amend("new message");
     expect(lore.amend).toHaveBeenCalledWith("/p", "new message");
     expect(useStore.getState().amendMode).toBe(false);
+  });
+});
+
+describe("stale-load guard (epoch)", () => {
+  it("loadHistory drops its result if the repo switched mid-load", async () => {
+    let resolveHist: (v: any) => void = () => {};
+    (lore.history as any).mockImplementationOnce(() => new Promise((res) => (resolveHist = res)));
+    useStore.setState({ history: [], epoch: 1 });
+    const p = useStore.getState().loadHistory(); // captures epoch 1
+    useStore.setState({ epoch: 2 }); // simulate a repo switch
+    resolveHist([{ revision: "x", revisionNumber: 9, parent: [] }]);
+    await p;
+    expect(useStore.getState().history).toEqual([]); // stale result discarded
+  });
+
+  it("loadHistory applies its result when the epoch is unchanged", async () => {
+    (lore.history as any).mockResolvedValueOnce([{ revision: "x", revisionNumber: 9, parent: [] }]);
+    useStore.setState({ history: [], epoch: 5 });
+    await useStore.getState().loadHistory();
+    expect(useStore.getState().history).toHaveLength(1);
+  });
+
+  it("selectFile drops the diff if the selection changed mid-load", async () => {
+    let resolveDiff: (v: any) => void = () => {};
+    (lore.fileDiff as any).mockImplementationOnce(() => new Promise((res) => (resolveDiff = res)));
+    useStore.setState({ epoch: 1, selectedPath: null, diff: "" });
+    const p = useStore.getState().selectFile("a.txt"); // selectedPath -> a.txt
+    useStore.setState({ selectedPath: "b.txt" }); // user picked another file
+    resolveDiff("PATCH-FOR-A");
+    await p;
+    expect(useStore.getState().diff).not.toBe("PATCH-FOR-A"); // stale diff not applied
   });
 });
 

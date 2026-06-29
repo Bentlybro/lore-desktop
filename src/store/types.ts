@@ -20,6 +20,9 @@ export interface ReposSlice {
   repos: RepoEntry[];
   current: RepoEntry | null;
   tab: Tab;
+  // Bumped on every repo switch; async loaders capture it and discard their
+  // result if it changed while they were in flight (stale-load guard).
+  epoch: number;
   init: () => Promise<void>;
   persistRepos: (repos: RepoEntry[]) => Promise<void>;
   saveSettings: (s: Settings) => Promise<void>;

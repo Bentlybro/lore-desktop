@@ -10,13 +10,16 @@ export const createBranchSlice = (set: StoreSet, get: StoreGet): BranchSlice => 
   async switchBranchRefresh() {
     const { current } = get();
     if (!current) return;
+    const ep = get().epoch;
     set({ busy: true });
     try {
-      set({ branches: await lore.branchList(current.path) });
+      const list = await lore.branchList(current.path);
+      if (get().epoch !== ep) return; // repo switched mid-load
+      set({ branches: list });
     } catch (e: any) {
-      set({ error: e?.message ?? String(e) });
+      if (get().epoch === ep) set({ error: e?.message ?? String(e) });
     } finally {
-      set({ busy: false });
+      if (get().epoch === ep) set({ busy: false });
     }
   },
 

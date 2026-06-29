@@ -20,8 +20,10 @@ export const createChangesSlice = (set: StoreSet, get: StoreGet): ChangesSlice =
   async loadLocks() {
     const { current } = get();
     if (!current) return;
+    const ep = get().epoch;
     try {
       const list = await lore.lockQuery(current.path);
+      if (get().epoch !== ep) return; // repo switched mid-load
       const map: Record<string, import("../../lib/api/lock").LockEntry> = {};
       for (const l of list) map[l.path] = l;
       set({ locks: map });
@@ -49,16 +51,18 @@ export const createChangesSlice = (set: StoreSet, get: StoreGet): ChangesSlice =
   async refresh(scan = true) {
     const { current } = get();
     if (!current) return;
+    const ep = get().epoch;
     set({ busy: true });
     try {
       const s = await lore.status(current.path, scan);
+      if (get().epoch !== ep) return; // repo switched mid-load — drop stale result
       set({ revision: s.revision ?? undefined, files: s.files });
       const sel = get().selectedPath;
       if (sel && s.files.some((f) => f.p === sel)) await get().selectFile(sel);
     } catch (e: any) {
-      set({ error: e?.message ?? String(e) });
+      if (get().epoch === ep) set({ error: e?.message ?? String(e) });
     } finally {
-      set({ busy: false });
+      if (get().epoch === ep) set({ busy: false });
     }
   },
 
@@ -87,14 +91,15 @@ export const createChangesSlice = (set: StoreSet, get: StoreGet): ChangesSlice =
   async selectFile(path) {
     const { current } = get();
     if (!current) return;
+    const ep = get().epoch;
     set({ selectedPath: path, diffLoading: true, diff: "" });
     try {
       const patch = await lore.fileDiff(current.path, path);
-      set({ diff: patch || "(no textual diff — file may be new or binary)" });
+      if (get().epoch !== ep || get().selectedPath !== path) return; // superseded
+      set({ diff: patch || "(no textual diff — file may be new or binary)", diffLoading: false });
     } catch (e: any) {
-      set({ diff: `(diff unavailable: ${e?.message ?? e})` });
-    } finally {
-      set({ diffLoading: false });
+      if (get().epoch !== ep || get().selectedPath !== path) return;
+      set({ diff: `(diff unavailable: ${e?.message ?? e})`, diffLoading: false });
     }
   },
 

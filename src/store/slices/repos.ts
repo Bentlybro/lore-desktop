@@ -10,6 +10,7 @@ export const createReposSlice = (set: StoreSet, get: StoreGet): ReposSlice => ({
   repos: [],
   current: null,
   tab: "changes",
+  epoch: 0,
 
   async init() {
     const settings = await lore.getSettings();
@@ -29,6 +30,7 @@ export const createReposSlice = (set: StoreSet, get: StoreGet): ReposSlice => ({
 
   async selectRepo(r) {
     set({
+      epoch: get().epoch + 1, // invalidate any in-flight loads from the previous repo
       current: r,
       files: [],
       selectedPath: null,
